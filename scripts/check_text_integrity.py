@@ -67,9 +67,9 @@ STRONG_MOJIBAKE_FRAGMENTS = (
 )
 
 CORE_TEXT_FILES = (
-    Path("backend/agent/tools.py"),
-    Path("backend/agent/report_builder.py"),
-    Path("backend/agent/nodes/understand_query.py"),
+    Path("backend/interaction/understand.py"),
+    Path("backend/interaction/narrate.py"),
+    Path("backend/interaction/service.py"),
 )
 
 

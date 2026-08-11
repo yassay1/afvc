@@ -1,7 +1,9 @@
-"""Interaction HTTP API —— Task 2 占位；Task 3 实现 handle_turn。"""
+"""Interaction HTTP API —— POST /interaction/turn → handle_turn。"""
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+
+from backend.interaction.service import handle_turn
 
 router = APIRouter(
     prefix="/interaction",
@@ -15,9 +17,6 @@ class TurnRequest(BaseModel):
 
 
 @router.post("/turn")
-def interaction_turn(_body: TurnRequest):
-    """POST /interaction/turn —— 暂未实现（Task 3）。"""
-    raise HTTPException(
-        status_code=501,
-        detail="Interaction layer not implemented yet (Task 3)",
-    )
+def interaction_turn(body: TurnRequest):
+    """POST /interaction/turn —— 薄 Interaction 一轮对话。"""
+    return handle_turn(body.query, session_id=body.session_id)

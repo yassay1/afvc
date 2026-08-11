@@ -19,9 +19,13 @@ def test_old_agent_path_gone():
     assert r.status_code == 404
 
 
-def test_interaction_turn_stub_returns_501():
-    r = client.post("/interaction/turn", json={"query": "hi"})
-    assert r.status_code == 501
+def test_interaction_turn_returns_answer():
+    r = client.post("/interaction/turn", json={"query": "hi", "session_id": "api-t1"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] in {"success", "clarified", "rejected"}
+    assert "final_answer" in body
+    assert body["session_id"] == "api-t1"
 
 
 def test_overview_endpoint():
