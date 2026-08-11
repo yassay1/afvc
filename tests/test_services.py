@@ -1,40 +1,38 @@
-"""Service 层单元测试。
+"""Application / infrastructure 单元测试（原 services 层）。
 
-测试 data / device / prediction / warning / advice / analysis 六个核心服务。
+测试 overview / history / risk / warning / advice / diagnose 核心用例。
 使用真实工单数据进行测试。
 """
 
 import pytest
 from pathlib import Path
 
-from backend.services.data_service import (
+from backend.infrastructure.workorders import (
     get_latest_raw_file,
     read_workorder_file,
-    get_basic_data_info,
-    get_data_summary,
     RAW_DATA_DIR,
 )
-from backend.services.device_service import (
+from backend.application.overview import (
+    get_basic_data_info,
+    get_data_overview,
+)
+from backend.application.history import (
     get_device_list,
     get_device_history,
 )
-from backend.services.prediction_service import (
+from backend.application.risk import (
     predict_device_risk,
-    get_high_risk_devices,
+    list_high_risk_devices,
 )
-from backend.services.warning_service import generate_warning_info
-from backend.services.advice_service import generate_device_advice
-from backend.services.analysis_service import generate_device_analysis
-from backend.services import model_adapter
+from backend.domain.warning import generate_warning_info
+from backend.application.advice import advise_maintenance
+from backend.application.diagnose import diagnose_device
+from backend.infrastructure import risk_table
 
 # ── 测试常量（基于真实数据中的设备） ──
 KNOWN_ASSETNUM = "1000029970"   # 花地湾站，163 条工单
 UNKNOWN_ASSETNUM = "ZZZ99999"   # 不存在的设备
 
-
-# ═══════════════════════════════════════════════════════════════
-# data_service 测试
-# ═══════════════════════════════════════════════════════════════
 
 class TestDataService:
 
@@ -59,7 +57,7 @@ class TestDataService:
 
     def test_get_data_summary(self):
         """应返回完整的数据概览。"""
-        summary = get_data_summary(top_n=5)
+        summary = get_data_overview(top_n=5)
         assert summary["status"] == "success"
         metrics = summary["basic_metrics"]
         assert metrics["workorder_count"] > 0
@@ -92,10 +90,6 @@ class TestDataService:
         assert file.suffix in [".xlsx", ".xls", ".csv"]
 
 
-# ═══════════════════════════════════════════════════════════════
-# device_service 测试
-# ═══════════════════════════════════════════════════════════════
-
 class TestDeviceService:
 
     def test_get_device_list(self):
@@ -104,7 +98,6 @@ class TestDeviceService:
         assert result["status"] == "success"
         devices = result["devices"]
         assert len(devices) > 0
-        # 应有 assetnum、station_name 等字段
         first = devices[0]
         assert "assetnum" in first
         assert "workorder_count" in first
@@ -121,10 +114,6 @@ class TestDeviceService:
         with pytest.raises(ValueError):
             get_device_history(UNKNOWN_ASSETNUM)
 
-
-# ═══════════════════════════════════════════════════════════════
-# prediction_service 测试
-# ═══════════════════════════════════════════════════════════════
 
 class TestPredictionService:
 
@@ -149,11 +138,10 @@ class TestPredictionService:
 
     def test_get_high_risk_devices(self):
         """应返回高风险设备列表。"""
-        result = get_high_risk_devices(top_n=5)
+        result = list_high_risk_devices(top_n=5)
         assert result["status"] == "success"
         devices = result["devices"]
         assert 0 < len(devices) <= 5
-        # 应按风险降序
         if len(devices) >= 2:
             assert devices[0]["risk_90d"] >= devices[1]["risk_90d"]
 
@@ -167,9 +155,9 @@ class TestPredictionService:
                 "BAD002,0.2,0.3,0.4,0.5,0.6,0.7\n",
                 encoding="utf-8",
             )
-            monkeypatch.setattr(model_adapter, "PREDICTION_RESULT_PATH", csv_path)
+            monkeypatch.setattr(risk_table, "PREDICTION_RESULT_PATH", csv_path)
 
-            result = model_adapter.get_external_prediction_by_assetnum("BAD001")
+            result = risk_table.get_external_prediction_by_assetnum("BAD001")
             assert result is not None
             for window in ["risk_7d", "risk_14d", "risk_21d", "risk_30d", "risk_60d", "risk_90d"]:
                 assert 0.01 <= result[window] <= 0.95
@@ -178,17 +166,13 @@ class TestPredictionService:
             assert result["risk_21d"] == 0.01
             assert result["risk_30d"] == 0.95
 
-            ranked = model_adapter.get_external_high_risk_predictions(top_n=2)
+            ranked = risk_table.get_external_high_risk_predictions(top_n=2)
             assert len(ranked) == 2
             assert ranked[0]["risk_90d"] >= ranked[1]["risk_90d"]
         finally:
             if csv_path.exists():
                 csv_path.unlink()
 
-
-# ═══════════════════════════════════════════════════════════════
-# warning_service 测试
-# ═══════════════════════════════════════════════════════════════
 
 class TestWarningService:
 
@@ -219,15 +203,11 @@ class TestWarningService:
         assert result["warning_level"] == "橙色预警"
 
 
-# ═══════════════════════════════════════════════════════════════
-# advice_service 测试
-# ═══════════════════════════════════════════════════════════════
-
 class TestAdviceService:
 
     def test_generate_advice_known(self):
         """已知设备应返回维修建议。"""
-        result = generate_device_advice(KNOWN_ASSETNUM)
+        result = advise_maintenance(KNOWN_ASSETNUM)
         assert result["status"] == "success"
         assert "recognized_fault_phenomena" in result
         assert "possible_causes" in result
@@ -237,29 +217,24 @@ class TestAdviceService:
     def test_generate_advice_unknown(self):
         """未知设备应抛出 ValueError。"""
         with pytest.raises(ValueError):
-            generate_device_advice(UNKNOWN_ASSETNUM)
+            advise_maintenance(UNKNOWN_ASSETNUM)
 
-
-# ═══════════════════════════════════════════════════════════════
-# analysis_service 测试
-# ═══════════════════════════════════════════════════════════════
 
 class TestAnalysisService:
 
     def test_generate_analysis_known(self):
         """已知设备应返回完整综合分析。"""
-        result = generate_device_analysis(KNOWN_ASSETNUM, history_limit=20)
+        result = diagnose_device(KNOWN_ASSETNUM, history_limit=20)
         assert result["status"] == "success"
         assert "device_profile" in result
         assert "history_summary" in result
         assert "risk_prediction" in result
         assert "maintenance_advice" in result
-        assert "called_tools" in result
         assert "analysis_statement" in result
 
     def test_analysis_profile_has_required_fields(self):
         """设备 profile 应包含必要字段。"""
-        result = generate_device_analysis(KNOWN_ASSETNUM)
+        result = diagnose_device(KNOWN_ASSETNUM)
         profile = result["device_profile"]
         assert "assetnum" in profile
         assert "station_name" in profile

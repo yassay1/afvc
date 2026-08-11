@@ -1,9 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.services.data_service import (
-    get_basic_data_info,
-    get_data_summary,
-)
+from backend.application.overview import get_basic_data_info, get_data_overview
 
 
 router = APIRouter(
@@ -47,7 +44,7 @@ def get_summary(top_n: int = Query(default=10, ge=1, le=30)):
         top_n: 排名前 N 的统计结果，默认 10，最大 30。
     """
     try:
-        return get_data_summary(top_n=top_n)
+        return get_data_overview(top_n=top_n)
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=404,

@@ -1,13 +1,13 @@
 from typing import Any
-from backend.services.model_adapter import (
-    get_external_prediction_by_assetnum,
-    get_external_high_risk_predictions,
-)
 
 import polars as pl
 
-from backend.services.data_service import read_workorder_file
-from backend.services.warning_service import generate_warning_info
+from backend.domain.warning import generate_warning_info
+from backend.infrastructure.risk_table import (
+    get_external_prediction_by_assetnum,
+    get_external_high_risk_predictions,
+)
+from backend.infrastructure.workorders import read_workorder_file
 
 
 def _round_risk(value: float) -> float:
@@ -286,7 +286,7 @@ def predict_device_risk(assetnum: str) -> dict[str, Any]:
 
     return _predict_from_df(df, target_assetnum)
 
-def get_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
+def list_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
     """
     获取高风险设备 Top N。
 

@@ -2,7 +2,7 @@ from typing import Any
 
 import polars as pl
 
-from backend.services.data_service import read_workorder_file
+from backend.infrastructure.workorders import read_workorder_file
 
 
 def _json_safe_value(value: Any) -> Any:

@@ -5,16 +5,16 @@
 
 from langchain.tools import tool
 
-from backend.services.data_service import get_data_summary as _get_data_summary
-from backend.services.device_service import get_device_list as _get_device_list
-from backend.services.device_service import get_device_history as _get_device_history
-from backend.services.prediction_service import predict_device_risk as _predict_device_risk
-from backend.services.prediction_service import get_high_risk_devices as _get_high_risk_devices
-from backend.services.warning_service import generate_warning_info as _generate_warning_info
-from backend.services.advice_service import generate_device_advice as _generate_device_advice
-from backend.services.analysis_service import generate_device_analysis as _generate_device_analysis
-from backend.services.rag_service import search_manual as _search_manual
-from backend.services.fault_prediction_service import predict_device_fault_type as _predict_device_fault_type
+from backend.application.advice import advise_maintenance as _generate_device_advice
+from backend.application.diagnose import diagnose_device as _generate_device_analysis
+from backend.application.fault_type import predict_fault_type as _predict_device_fault_type
+from backend.application.history import get_device_history as _get_device_history
+from backend.application.history import get_device_list as _get_device_list
+from backend.application.manual import search_manual as _search_manual
+from backend.application.overview import get_data_overview as _get_data_summary
+from backend.application.risk import list_high_risk_devices as _get_high_risk_devices
+from backend.application.risk import predict_device_risk as _predict_device_risk
+from backend.domain.warning import generate_warning_info as _generate_warning_info
 
 
 @tool

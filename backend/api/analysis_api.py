@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.services.analysis_service import generate_device_analysis
+from backend.application.diagnose import diagnose_device
 
 
 router = APIRouter(
@@ -25,7 +25,7 @@ def analyze_device(
     5. 维修建议。
     """
     try:
-        return generate_device_analysis(
+        return diagnose_device(
             assetnum=assetnum,
             history_limit=history_limit,
         )

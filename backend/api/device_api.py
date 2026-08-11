@@ -1,10 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.services.device_service import (
-    get_device_list,
-    get_device_history,
-)
-from backend.services.prediction_service import get_high_risk_devices
+from backend.application.history import get_device_history, get_device_list
+from backend.application.risk import list_high_risk_devices as get_high_risk_devices
 
 
 router = APIRouter(

@@ -1,25 +1,20 @@
-"""故障类型预测 Service —— 组合 Adapter、Domain 和 Schema 完成完整业务用例。
-
-对外提供 predict_device_fault_type() 函数。
-"""
+"""故障类型预测用例。"""
 
 from typing import Any
 
-from backend.adapters.fault_prediction_adapter import (
-    get_fault_type_scores,
-    has_fault_prediction_file,
-)
 from backend.domain.risk import (
     SUPPORTED_PREDICTION_WINDOWS,
     compute_estimated_occurrence_probability,
     get_risk_for_window,
 )
+from backend.infrastructure.fault_table import (
+    get_fault_type_scores,
+    has_fault_prediction_file,
+)
 from backend.schemas.fault_prediction import (
     FaultTypeScore,
     FaultTypePredictionResult,
 )
-
-# ── 常量 ──────────────────────────────────────────────────────────
 
 DEFAULT_WINDOW_DAYS = 30
 DEFAULT_TOP_K = 3
@@ -30,22 +25,9 @@ PREDICTION_STATEMENT = (
 )
 
 
-# ── 辅助函数 ──────────────────────────────────────────────────────
-
 def _normalize_conditional_probabilities(
     scores: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """归一化条件概率，使同一设备同一窗口下总和为 1。
-
-    对列表中的 conditional_probability 进行归一化处理。
-    如果总和为 0 或列表为空，则不做处理。
-
-    Args:
-        scores: 故障类型评分列表。
-
-    Returns:
-        归一化后的列表（原地修改）。
-    """
     if not scores:
         return scores
 
@@ -59,38 +41,12 @@ def _normalize_conditional_probabilities(
     return scores
 
 
-# ── 公开函数 ──────────────────────────────────────────────────────
-
-def predict_device_fault_type(
+def predict_fault_type(
     assetnum: str,
     window_days: int = DEFAULT_WINDOW_DAYS,
     top_k: int = DEFAULT_TOP_K,
 ) -> dict[str, Any]:
-    """预测设备在指定时间窗口内最可能出现的故障类别。
-
-    执行流程：
-    1. 校验设备编号和预测窗口
-    2. 调用 predict_device_risk 获取总体风险
-    3. 根据 window_days 读取对应 risk 字段
-    4. 调用 fault_prediction_adapter 获取故障类别条件概率
-    5. 如果没有故障类型预测结果，返回 unavailable 状态
-    6. 对条件概率进行归一化
-    7. 计算每一类故障的 estimated_occurrence_probability
-    8. 按条件概率从高到低排序
-    9. 截取 top_k
-    10. 生成 most_likely_fault
-    11. 使用 FaultTypePredictionResult 做最终校验
-    12. 返回兼容字典
-
-    Args:
-        assetnum: 设备编号。
-        window_days: 预测时间窗口（天），默认 30。
-        top_k: 返回的故障类别数量，默认 3。
-
-    Returns:
-        FaultTypePredictionResult 的兼容字典。
-    """
-    # ── 1. 参数校验 ──
+    """预测设备在指定时间窗口内最可能出现的故障类别。"""
     target_assetnum = assetnum.strip()
     if not target_assetnum:
         return {
@@ -123,9 +79,8 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 2. 获取总体风险 ──
     try:
-        from backend.services.prediction_service import predict_device_risk
+        from backend.application.risk import predict_device_risk
 
         risk_result = predict_device_risk(target_assetnum)
         if risk_result.get("status") != "success":
@@ -168,7 +123,6 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 3. 提取对应窗口的风险值 ──
     try:
         overall_failure_risk = get_risk_for_window(risk_result, window_days)
         if overall_failure_risk is None:
@@ -198,7 +152,6 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 4. 获取故障类别条件概率 ──
     if not has_fault_prediction_file():
         return {
             "status": "unavailable",
@@ -229,7 +182,6 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 5. 无结果 → unavailable ──
     if not scores:
         return {
             "status": "unavailable",
@@ -246,24 +198,19 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 6. 归一化条件概率 ──
     scores = _normalize_conditional_probabilities(scores)
 
-    # ── 7. 计算综合估计发生概率 ──
     model_version = None
     for s in scores:
         s["estimated_occurrence_probability"] = compute_estimated_occurrence_probability(
             overall_failure_risk=overall_failure_risk,
             conditional_probability=s["conditional_probability"],
         )
-        # 从第一条记录提取 model_version
         if model_version is None:
             model_version = s.get("model_version")
 
-    # ── 8. 已排序（Adapter 保证），截取 top_k ──
     scores = scores[:top_k]
 
-    # ── 9. 构建 FaultTypeScore 列表 ──
     fault_scores = []
     for s in scores:
         try:
@@ -275,7 +222,6 @@ def predict_device_fault_type(
             )
             fault_scores.append(fs)
         except ValueError:
-            # 跳过校验失败的条目
             continue
 
     if not fault_scores:
@@ -292,10 +238,8 @@ def predict_device_fault_type(
             "prediction_statement": PREDICTION_STATEMENT,
         }
 
-    # ── 10. most_likely_fault ──
     most_likely = fault_scores[0]
 
-    # ── 11. 最终校验 ──
     result = FaultTypePredictionResult(
         status="success",
         message="故障类型预测成功",
@@ -309,5 +253,4 @@ def predict_device_fault_type(
         prediction_statement=PREDICTION_STATEMENT,
     )
 
-    # ── 12. 返回兼容字典 ──
     return result.to_compat_dict()

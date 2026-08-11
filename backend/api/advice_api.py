@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.services.advice_service import generate_device_advice
+from backend.application.advice import advise_maintenance
 
 
 router = APIRouter(
@@ -18,7 +18,7 @@ def get_advice(assetnum: str):
     后续可升级为 RAG + Agent。
     """
     try:
-        return generate_device_advice(assetnum)
+        return advise_maintenance(assetnum)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:

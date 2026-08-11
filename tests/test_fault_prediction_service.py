@@ -5,8 +5,8 @@
 
 import pytest
 
-from backend.services.fault_prediction_service import (
-    predict_device_fault_type,
+from backend.application.fault_type import (
+    predict_fault_type as predict_device_fault_type,
     DEFAULT_WINDOW_DAYS,
     DEFAULT_TOP_K,
 )

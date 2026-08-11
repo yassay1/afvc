@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.services.prediction_service import predict_device_risk
-from backend.services.fault_prediction_service import predict_device_fault_type
+from backend.application.fault_type import predict_fault_type
+from backend.application.risk import predict_device_risk
 from backend.domain.risk import SUPPORTED_PREDICTION_WINDOWS
 
 
@@ -38,7 +38,6 @@ def predict_asset_fault_type(
     - **conditional_probability**：如果发生故障，属于某一类别的条件概率
     - **estimated_occurrence_probability**：综合估计发生概率 = 前者 × 后者
     """
-    # 参数校验
     if window_days not in SUPPORTED_PREDICTION_WINDOWS:
         raise HTTPException(
             status_code=422,
@@ -48,12 +47,11 @@ def predict_asset_fault_type(
         raise HTTPException(status_code=422, detail="top_k 必须 >= 1")
 
     try:
-        result = predict_device_fault_type(
+        result = predict_fault_type(
             assetnum=assetnum,
             window_days=window_days,
             top_k=top_k,
         )
-        # 即使 status=unavailable，也返回 200（区别于服务器故障）
         return result
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

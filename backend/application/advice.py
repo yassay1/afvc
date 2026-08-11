@@ -2,7 +2,7 @@ from typing import Any
 
 import polars as pl
 
-from backend.services.data_service import read_workorder_file
+from backend.infrastructure.workorders import read_workorder_file
 
 
 ADVICE_RULES = [
@@ -433,7 +433,7 @@ def _match_advice_rules(descriptions: list[str]) -> list[dict[str, Any]]:
     return matched_rules
 
 
-def generate_device_advice(assetnum: str) -> dict[str, Any]:
+def advise_maintenance(assetnum: str) -> dict[str, Any]:
     """
     根据设备历史工单 description 生成维修建议。
 
