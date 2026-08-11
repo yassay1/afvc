@@ -70,7 +70,6 @@ CORE_TEXT_FILES = (
     Path("backend/agent/tools.py"),
     Path("backend/agent/report_builder.py"),
     Path("backend/agent/nodes/understand_query.py"),
-    Path("backend/api/agent_api.py"),
 )
 
 
