@@ -61,6 +61,24 @@ streamlit run frontend/streamlit_app.py
 
 健康检查：`GET http://127.0.0.1:8000/health`
 
+## HTTP 路径
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/health` | 健康检查 |
+| POST | `/upload/workorders` | 上传工单文件 |
+| GET | `/usecases/overview?top_n=` | 数据概览 |
+| GET | `/usecases/high-risk?top_n=` | 高风险设备 Top N |
+| GET | `/usecases/devices/{assetnum}/history` | 设备历史 |
+| GET | `/usecases/devices/{assetnum}/risk` | 设备风险预测 |
+| GET | `/usecases/devices/{assetnum}/advice` | 维护建议 |
+| GET | `/usecases/devices/{assetnum}/fault-type` | 故障类型预测 |
+| GET | `/usecases/devices/{assetnum}/diagnosis` | 综合诊断 |
+| GET | `/usecases/manuals/search?query=` | 手册检索 |
+| POST | `/interaction/turn` | 薄对话一轮（body: `query`, `session_id`） |
+
+前端控制台直接调用 `/usecases/*` 与 `/upload/workorders`；对话工作台只调用 `POST /interaction/turn`。
+
 ## 测试
 
 ```bash

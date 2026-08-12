@@ -112,10 +112,11 @@ README.md
 
 Application 输出与 Interaction 叙述均须遵守；叙述层不得放松。
 
-## 7. 前端
+## 7. 前端与 HTTP 入口
 
-- **控制台页**：直接打诊断 API（概览、上传、高风险、单设备分析等）
-- **可选 Chat 页**：只走 Interaction → Application，不在浏览器拼业务
+- **控制台页**：直接打用例 API — `GET /usecases/overview`、`/usecases/high-risk`、`/usecases/devices/{assetnum}/diagnosis` 等；上传走 `POST /upload/workorders`
+- **对话工作台**：只走 `POST /interaction/turn`（`query` + `session_id`）→ Interaction → Application，不在浏览器拼业务
+- 完整路径表见 [README.md](../README.md)
 
 ## 8. 质量期望
 

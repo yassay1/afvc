@@ -1,4 +1,4 @@
-"""Loading-state lifecycle tests for Streamlit Agent submissions."""
+"""Loading-state lifecycle tests for Streamlit Interaction submissions."""
 from frontend import streamlit_app
 
 
@@ -20,8 +20,7 @@ class _FakeStreamlit:
             "agent_session_id": "session-test",
             "agent_messages": [],
             "agent_last_assetnum": None,
-            "agent_last_route": None,
-            "agent_last_business_goal": None,
+            "agent_last_use_case": None,
             "agent_is_processing": processing,
         }
         self.placeholders = []
@@ -36,10 +35,11 @@ def _success_result(**overrides):
     result = {
         "status": "success",
         "final_answer": "分析完成",
+        "use_case": "diagnose_device",
         "assetnum": "1000029970",
-        "route": "business_device",
-        "business_goal": "device_risk",
-        "errors": [],
+        "last_assetnum": "1000029970",
+        "session_id": "session-test",
+        "result": None,
     }
     result.update(overrides)
     return result
@@ -56,25 +56,32 @@ def _assert_cleaned(fake_st):
     )
 
 
-def test_success_and_rule_or_template_fallback_responses_clear_loading(monkeypatch):
+def test_success_and_clarified_responses_clear_loading(monkeypatch):
     for result in (
         _success_result(),
-        _success_result(errors=["LLM 问题理解不可用，使用规则兜底"]),
-        _success_result(errors=["LLM 报告生成失败，使用模板兜底"]),
+        _success_result(status="clarified", use_case="predict_device_risk", assetnum=None, final_answer="请补充设备编号"),
+        _success_result(status="chat", use_case=None, assetnum=None, final_answer="你好"),
     ):
         fake_st = _FakeStreamlit()
         monkeypatch.setattr(streamlit_app, "st", fake_st)
-        monkeypatch.setattr(streamlit_app, "_agent_diagnose", lambda question, value=result: value)
+        monkeypatch.setattr(streamlit_app, "_interaction_turn", lambda question, value=result: value)
 
         assert streamlit_app._handle_agent_query("测试问题") is True
         _assert_cleaned(fake_st)
-        assert fake_st.session_state["agent_messages"][-1]["content"] == "分析完成"
+        assert fake_st.session_state["agent_messages"][-1]["content"] == result["final_answer"]
+        meta = fake_st.session_state["agent_messages"][-1]["meta"]
+        assert meta["status"] == result["status"]
+        assert meta["use_case"] == result["use_case"]
+        assert meta["session_id"] == "session-test"
+        if result["status"] == "success":
+            assert fake_st.session_state["agent_last_use_case"] == "diagnose_device"
+            assert fake_st.session_state["agent_last_assetnum"] == "1000029970"
 
 
 def test_empty_or_timeout_result_clears_loading(monkeypatch):
     fake_st = _FakeStreamlit()
     monkeypatch.setattr(streamlit_app, "st", fake_st)
-    monkeypatch.setattr(streamlit_app, "_agent_diagnose", lambda question: None)
+    monkeypatch.setattr(streamlit_app, "_interaction_turn", lambda question: None)
 
     assert streamlit_app._handle_agent_query("测试问题") is True
     _assert_cleaned(fake_st)
@@ -88,7 +95,7 @@ def test_agent_exception_clears_loading_and_saves_recoverable_error(monkeypatch)
     def fail(_question):
         raise RuntimeError("simulated failure")
 
-    monkeypatch.setattr(streamlit_app, "_agent_diagnose", fail)
+    monkeypatch.setattr(streamlit_app, "_interaction_turn", fail)
     assert streamlit_app._handle_agent_query("测试问题") is True
     _assert_cleaned(fake_st)
     assert "simulated failure" in fake_st.session_state["agent_messages"][-1]["content"]
@@ -99,11 +106,11 @@ def test_duplicate_submission_is_ignored_without_extra_placeholder(monkeypatch):
     monkeypatch.setattr(streamlit_app, "st", fake_st)
     called = False
 
-    def diagnose(_question):
+    def turn(_question):
         nonlocal called
         called = True
 
-    monkeypatch.setattr(streamlit_app, "_agent_diagnose", diagnose)
+    monkeypatch.setattr(streamlit_app, "_interaction_turn", turn)
     assert streamlit_app._handle_agent_query("重复问题") is False
     assert called is False
     assert fake_st.placeholders == []

@@ -18,13 +18,12 @@ if str(PROJECT_ROOT) not in sys.path:
 from backend.core.config import is_llm_enabled
 from frontend.styles import inject_app_styles
 from frontend.ui_components import (
-    BUSINESS_GOAL_LABELS,
-    ROUTE_LABELS,
+    USE_CASE_LABELS,
     display_label,
     render_mode_card,
     render_page_header,
-    render_route_panel,
     render_sidebar_brand,
+    render_status_panel,
 )
 
 API_BASE_URL = "http://127.0.0.1:8000"
@@ -34,7 +33,7 @@ NAVIGATION = {
     "数据概览": "overview",
     "高风险设备": "high_risk",
     "设备分析": "device_analysis",
-    "Agent 工作台": "agent",
+    "对话工作台": "chat",
 }
 
 st.set_page_config(
@@ -102,7 +101,7 @@ def _header(title: str, english: str, description: str, scene: str | None = None
 def page_home() -> None:
     _header(
         "AFC 故障预测与维护系统",
-        "AFC Fault Prediction & Maintenance Agent",
+        "AFC Fault Prediction & Maintenance",
         "面向 AFC 设备的故障预测、风险分析与智能维护决策平台",
         "系统概览",
     )
@@ -114,10 +113,10 @@ def page_home() -> None:
     with col_b:
         st.info("**维护决策**\n\n结合历史工单与维护规则，提供可执行的巡检方向。")
     with col_c:
-        st.info("**Agent 协同**\n\n通过八节点工作流完成理解、规划、取证、评估与回答。")
-    st.markdown('<div class="afc-section-label">路由示例</div>', unsafe_allow_html=True)
-    render_route_panel(st, "business_device", "device_history", "1000029970")
-    st.caption("示例仅用于说明路由字段的友好展示；实际工作台状态来自 Agent 接口响应。")
+        st.info("**对话入口**\n\n通过自然语言选用例、补全参数，并将结构化结果叙述为可读答复。")
+    st.markdown('<div class="afc-section-label">用例示例</div>', unsafe_allow_html=True)
+    render_status_panel(st, "diagnose_device", "1000029970", None)
+    st.caption("示例仅用于说明用例字段的友好展示；实际工作台状态来自对话接口响应。")
 
 
 def page_upload() -> None:
@@ -135,7 +134,7 @@ def page_data_overview() -> None:
     _header("数据概览", "Work-order Data Overview", "查看当前工单数据的规模、分布和高频故障摘要。", "全局数据分析")
     top_n = st.number_input("统计条数 Top N", min_value=1, max_value=50, value=10)
     if st.button("刷新数据概览", type="primary"):
-        result = api_get("/data/summary", params={"top_n": int(top_n)})
+        result = api_get("/usecases/overview", params={"top_n": int(top_n)})
         if result:
             st.json(result)
 
@@ -144,7 +143,7 @@ def page_high_risk() -> None:
     _header("高风险设备", "High-risk Device Prioritization", "按预测风险识别需要优先关注的 AFC 设备。", "风险排序")
     top_n = st.number_input("设备数量 Top N", min_value=1, max_value=50, value=10)
     if st.button("生成风险列表", type="primary"):
-        result = api_get("/devices/high-risk", params={"top_n": int(top_n)})
+        result = api_get("/usecases/high-risk", params={"top_n": int(top_n)})
         if result:
             devices = result.get("devices") if isinstance(result, dict) else None
             if devices:
@@ -154,33 +153,31 @@ def page_high_risk() -> None:
 
 
 def page_device_analysis() -> None:
-    _header("设备分析", "Device Analysis", "查询单台设备的历史、风险、预警与维护建议。", "单设备诊断")
+    _header("设备分析", "Device Analysis", "查询单台设备的综合诊断（历史、风险、建议等聚合结果）。", "单设备诊断")
     assetnum = st.text_input("设备编号", value="1000029970", help="例如：1000029970 或 EX011115。")
     if st.button("开始分析", type="primary") and assetnum.strip():
-        result = api_get(f"/analysis/{assetnum.strip()}")
+        result = api_get(f"/usecases/devices/{assetnum.strip()}/diagnosis")
         if result:
             st.json(result)
 
 
-def _init_agent_session() -> None:
+def _init_chat_session() -> None:
     defaults = {
         "agent_session_id": str(uuid.uuid4()),
         "agent_messages": [],
         "agent_last_assetnum": None,
-        "agent_last_route": None,
-        "agent_last_business_goal": None,
+        "agent_last_use_case": None,
         "agent_is_processing": False,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
 
 
-def _new_agent_session() -> None:
+def _new_chat_session() -> None:
     st.session_state["agent_session_id"] = str(uuid.uuid4())
     st.session_state["agent_messages"] = []
     st.session_state["agent_last_assetnum"] = None
-    st.session_state["agent_last_route"] = None
-    st.session_state["agent_last_business_goal"] = None
+    st.session_state["agent_last_use_case"] = None
     st.session_state["agent_is_processing"] = False
 
 
@@ -190,15 +187,15 @@ def _clear_stale_agent_processing() -> None:
         st.session_state["agent_is_processing"] = False
 
 
-def _agent_diagnose(question: str) -> dict[str, Any] | None:
+def _interaction_turn(question: str) -> dict[str, Any] | None:
     return api_post(
-        "/agent/diagnose",
+        "/interaction/turn",
         {"query": question, "session_id": st.session_state["agent_session_id"]},
     )
 
 
 def _handle_agent_query(question: str) -> bool:
-    """Execute one Agent request and always clear its transient loading state."""
+    """Execute one Interaction turn and always clear its transient loading state."""
     if st.session_state.get("agent_is_processing", False):
         return False
 
@@ -208,7 +205,7 @@ def _handle_agent_query(question: str) -> bool:
 
     try:
         thinking_placeholder.markdown("AFC Agent 正在分析问题并整理证据……")
-        result = _agent_diagnose(question)
+        result = _interaction_turn(question)
 
         if not result:
             st.session_state["agent_messages"].append(
@@ -216,34 +213,22 @@ def _handle_agent_query(question: str) -> bool:
             )
             return True
 
-        if result.get("status") == "success":
+        if result.get("status") in {"success", "clarified", "chat", "unsupported"}:
             st.session_state["agent_last_assetnum"] = result.get("last_assetnum") or result.get("assetnum")
-            st.session_state["agent_last_route"] = result.get("last_route") or result.get("route")
-            st.session_state["agent_last_business_goal"] = result.get("last_business_goal") or result.get("business_goal")
+            st.session_state["agent_last_use_case"] = result.get("use_case")
+            if result.get("session_id"):
+                st.session_state["agent_session_id"] = result["session_id"]
 
         st.session_state["agent_messages"].append(
             {
                 "role": "assistant",
                 "content": result.get("final_answer") or "本次未生成有效回答。",
                 "meta": {
+                    "use_case": result.get("use_case"),
                     "assetnum": result.get("assetnum"),
-                    "route": result.get("route"),
-                    "business_goal": result.get("business_goal"),
-                    "answer_mode": result.get("answer_mode"),
-                    "time_window": result.get("time_window"),
-                    "selected_tools": result.get("selected_tools", []),
-                    "tool_trace": result.get("tool_trace", []),
-                    "query_understanding": result.get("query_understanding", {}),
-                    "tool_plan": result.get("tool_plan", {}),
-                    "evidence_packet": result.get("evidence_packet", {}),
-                    "evidence_evaluation": result.get("evidence_evaluation", {}),
-                    "generated_answer": result.get("generated_answer", {}),
-                    "errors": result.get("errors", []),
-                    "session_id": result.get("session_id"),
                     "last_assetnum": result.get("last_assetnum"),
-                    "last_route": result.get("last_route"),
-                    "last_business_goal": result.get("last_business_goal"),
-                    "raw_response": result,
+                    "session_id": result.get("session_id"),
+                    "status": result.get("status"),
                 },
             }
         )
@@ -252,7 +237,7 @@ def _handle_agent_query(question: str) -> bool:
         st.session_state["agent_messages"].append(
             {
                 "role": "assistant",
-                "content": f"Agent 调用异常：{exc}。请稍后重试。",
+                "content": f"对话调用异常：{exc}。请稍后重试。",
                 "meta": None,
             }
         )
@@ -263,63 +248,44 @@ def _handle_agent_query(question: str) -> bool:
 
 
 def _render_message_meta(meta: dict[str, Any]) -> None:
-    selected_tools = meta.get("selected_tools", [])
-    if selected_tools:
-        st.caption("证据工具：" + " · ".join(str(name) for name in selected_tools))
-    for error in meta.get("errors", []):
-        st.warning(str(error))
+    bits = []
+    use_case = meta.get("use_case")
+    if use_case:
+        bits.append(display_label(use_case, USE_CASE_LABELS))
+    if meta.get("assetnum"):
+        bits.append(f"设备 {meta['assetnum']}")
+    if meta.get("session_id"):
+        bits.append(f"会话 {str(meta['session_id'])[:8]}")
+    if bits:
+        st.caption(" · ".join(bits))
 
 
-def _latest_agent_meta() -> dict[str, Any] | None:
-    for message in reversed(st.session_state.get("agent_messages", [])):
-        if message.get("role") == "assistant" and message.get("meta"):
-            return message["meta"]
-    return None
-
-
-def _render_agent_debug(meta: dict[str, Any] | None) -> None:
-    with st.expander("调试信息", expanded=False):
-        st.caption("仅用于开发和问题排查，默认不展示内部工作流数据。")
-        if not meta:
-            st.write("当前会话尚无 Agent 响应。")
-            return
-        col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("Route", meta.get("route") or "None")
-        col_b.metric("Business Goal", meta.get("business_goal") or "None")
-        col_c.metric("Answer Mode", meta.get("answer_mode") or "None")
-        col_d.metric("Session", str(meta.get("session_id") or "None")[:12])
-        for label in (
-            "query_understanding",
-            "tool_plan",
-            "evidence_packet",
-            "evidence_evaluation",
-            "generated_answer",
-            "tool_trace",
-            "raw_response",
-        ):
-            value = meta.get(label)
-            if value:
-                st.markdown(f"**{label}**")
-                st.json(value)
-
-
-def page_agent() -> None:
-    _init_agent_session()
+def page_chat() -> None:
+    _init_chat_session()
     # A browser refresh or an interrupted previous run must not resurrect a
     # transient loading indicator. Requests are synchronous within one run.
     _clear_stale_agent_processing()
-    route = st.session_state.get("agent_last_route")
-    goal = st.session_state.get("agent_last_business_goal")
-    scene = display_label(goal, BUSINESS_GOAL_LABELS, "Agent 对话")
-    _header("Agent 工作台", "AFC Intelligent Operations Assistant", "通过自然语言查询设备风险、历史工单、维护建议和综合诊断。", scene)
+    use_case = st.session_state.get("agent_last_use_case")
+    scene = display_label(use_case, USE_CASE_LABELS, "对话工作台")
+    _header(
+        "对话工作台",
+        "AFC Conversation Console",
+        "通过自然语言查询设备风险、历史工单、维护建议和综合诊断。",
+        scene,
+    )
 
     col_status, col_button = st.columns([5, 1])
     with col_status:
-        render_route_panel(st, route, goal, st.session_state.get("agent_last_assetnum"))
+        render_status_panel(
+            st,
+            use_case,
+            st.session_state.get("agent_last_assetnum"),
+            st.session_state.get("agent_session_id"),
+        )
     with col_button:
         st.write("")
         if st.button("新建会话", use_container_width=True):
-            _new_agent_session()
+            _new_chat_session()
             st.rerun()
 
     render_mode_card(st, is_llm_enabled())
@@ -358,9 +324,6 @@ def page_agent() -> None:
         if _handle_agent_query(prompt):
             st.rerun()
 
-    st.markdown('<div class="afc-section-label">辅助信息</div>', unsafe_allow_html=True)
-    _render_agent_debug(_latest_agent_meta())
-
 
 def main() -> None:
     inject_app_styles(st)
@@ -381,7 +344,7 @@ def main() -> None:
     elif page == "device_analysis":
         page_device_analysis()
     else:
-        page_agent()
+        page_chat()
 
 
 if __name__ == "__main__":
