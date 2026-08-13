@@ -1,7 +1,6 @@
 """预警等级领域定义 —— 红橙黄绿四级预警规则。
 
-本模块封装预警等级判断逻辑，保持与现有 backend/services/warning_service.py 一致。
-迁移策略：先在 domain 层建立标准定义，后续 Service 层通过调用此函数收敛逻辑。
+本模块是预警等级判断的唯一实现。
 """
 
 from enum import Enum
@@ -20,7 +19,7 @@ class WarningLevel(str, Enum):
 def generate_warning_info(risk_30d: float, risk_90d: float) -> dict[str, Any]:
     """根据 30 天和 90 天风险生成预警等级与巡检建议。
 
-    规则（与现有 warning_service.py 保持一致）：
+    规则：
     - 红色预警：risk_30d ≥ 0.75 或 risk_90d ≥ 0.90
     - 橙色预警：risk_30d ≥ 0.55 或 risk_90d ≥ 0.75
     - 黄色预警：risk_30d ≥ 0.35 或 risk_90d ≥ 0.55

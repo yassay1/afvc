@@ -5,7 +5,7 @@
 
 import pytest
 
-from backend.adapters.fault_prediction_adapter import (
+from backend.infrastructure.fault_table import (
     has_fault_prediction_file,
     get_fault_type_scores,
     load_fault_prediction_table,

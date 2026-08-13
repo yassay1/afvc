@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.services.rag_service import search_manual, _get_manual_files, _split_into_chunks, _keyword_score
+from backend.infrastructure.manual_search import search_manual, _get_manual_files, _split_into_chunks, _keyword_score
 
 
 class TestKeywordScoring:

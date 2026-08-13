@@ -1,5 +1,6 @@
 altair>=6.0.0
 fastapi>=0.136.0
+httpx>=0.28.0
 fastexcel>=0.20.0
 langchain>=1.0.0
 langchain-openai>=1.0.0
