@@ -49,9 +49,9 @@ def _assert_cleaned(fake_st):
     assert fake_st.session_state["agent_is_processing"] is False
     assert len(fake_st.placeholders) == 1
     assert fake_st.placeholders[0].empty_calls == 1
-    assert fake_st.placeholders[0].contents == ["AFC Agent 正在分析问题并整理证据……"]
+    assert fake_st.placeholders[0].contents == ["正在调用诊断能力并整理答复……"]
     assert all(
-        "正在分析问题并整理证据" not in message.get("content", "")
+        "正在调用诊断能力" not in message.get("content", "")
         for message in fake_st.session_state["agent_messages"]
     )
 

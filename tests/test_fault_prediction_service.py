@@ -1,14 +1,7 @@
-"""故障类型预测 Service 单元测试。
-
-测试 backend/services/fault_prediction_service.py 的完整业务流程。
-"""
-
-import pytest
+"""故障类型预测用例单元测试。"""
 
 from backend.application.fault_type import (
     predict_fault_type as predict_device_fault_type,
-    DEFAULT_WINDOW_DAYS,
-    DEFAULT_TOP_K,
 )
 from backend.domain.risk import SUPPORTED_PREDICTION_WINDOWS
 

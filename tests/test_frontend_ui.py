@@ -42,6 +42,8 @@ def test_frontend_api_paths_target_use_case_and_interaction():
         "/usecases/devices/",
         "/diagnosis",
         "/interaction/turn",
+        "/interaction/approve",
+        "/interaction/reject",
     ):
         assert path in APP_SOURCE
     for legacy in ("/data/summary", "/devices/high-risk", "/analysis/", "/agent/diagnose"):

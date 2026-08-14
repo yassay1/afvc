@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: afvc
+      POSTGRES_PASSWORD: afvc
+      POSTGRES_DB: afvc
+    ports:
+      - "5432:5432"
+    volumes:
+      - afvc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afvc -d afvc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  afvc_pgdata:

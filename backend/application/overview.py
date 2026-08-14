@@ -6,8 +6,8 @@ import polars as pl
 
 from backend.infrastructure.workorders import (
     REQUIRED_COLUMNS,
-    get_latest_raw_file,
-    read_workorder_file,
+    get_data_source_info,
+    load_workorders,
 )
 
 
@@ -96,8 +96,8 @@ def _get_time_range(df: pl.DataFrame, column: str = "current_faildate") -> dict[
 
 def get_basic_data_info() -> dict[str, Any]:
     """返回当前工单数据的基础信息（运维面辅助，非八大诊断用例）。"""
-    latest_file = get_latest_raw_file()
-    df = read_workorder_file(latest_file)
+    source = get_data_source_info()
+    df = load_workorders()
 
     existing_columns = df.columns
     required_column_status = {
@@ -110,8 +110,9 @@ def get_basic_data_info() -> dict[str, Any]:
     return {
         "status": "success",
         "message": "工单数据读取成功",
-        "current_file": latest_file.name,
-        "file_path": str(latest_file),
+        "current_file": source["current_file"],
+        "file_path": source["file_path"],
+        "data_backend": source.get("backend"),
         "row_count": df.height,
         "column_count": df.width,
         "columns": existing_columns,
@@ -123,13 +124,14 @@ def get_basic_data_info() -> dict[str, Any]:
 
 def get_data_overview(top_n: int = 10) -> dict[str, Any]:
     """获取 AFC 工单数据概览统计信息。"""
-    latest_file = get_latest_raw_file()
-    df = read_workorder_file(latest_file)
+    source = get_data_source_info()
+    df = load_workorders()
 
     return {
         "status": "success",
         "message": "工单数据概览统计成功",
-        "current_file": latest_file.name,
+        "current_file": source["current_file"],
+        "data_backend": source.get("backend"),
         "basic_metrics": {
             "workorder_count": df.height,
             "column_count": df.width,

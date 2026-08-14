@@ -1,11 +1,14 @@
-"""模板优先叙述 —— 将用例结构化结果写成可读答复；默认不调用 LLM。"""
+"""叙述层 —— LLM 优先，将用例结构化结果写成可读答复；模板作为兜底。"""
 
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from backend.core.config import is_llm_enabled
+
+logger = logging.getLogger("afvc.narrate")
 
 SCIENTIFIC_BOUNDARY = (
     "科学边界说明：\n"
@@ -57,6 +60,54 @@ def narrate_static(kind: str) -> str:
         "clarified": CLARIFY_ASSET_TEXT,
     }
     return mapping.get(kind, CHAT_TEXT)
+
+
+# chat / explanation 属于对话性文本，LLM 可用时用 GLM 生成更自然的答复；
+# capability / clarified / rejected 是能力边界与澄清提示，属于护栏文案，保持固定。
+_LLM_STATIC_KINDS = {"chat", "explanation"}
+
+_STATIC_SYSTEM_PROMPT = (
+    "你是地铁 AFC 设备运维诊断助手。请用简洁、友好、专业的中文回应用户，"
+    "并把话题引导回你能提供的能力：工单数据概览、高风险设备、设备历史、"
+    "复发风险预测与预警、维修/巡检建议、故障类型参考、手册检索、综合诊断。硬性要求：\n"
+    "1. 不承诺超出上述范围的能力，不编造设备、数值或结论；\n"
+    "2. 风险是未来窗口内再次产生故障工单的可能性，不等于精确故障日期；"
+    "维修建议是巡检方向，不是最终根因；\n"
+    "3. 输出纯文本，简短即可（3~5 句以内）。"
+)
+
+
+def _llm_static(kind: str, query: str) -> str | None:
+    """chat / explanation 的 GLM 生成；失败返回 None 由调用方兜底。"""
+    try:
+        from backend.core.llm import get_conversation_llm
+
+        llm = get_conversation_llm()
+        intent = "日常寒暄或简单交流" if kind == "chat" else "解释风险/概率/建议等概念的含义与边界"
+        user_content = (
+            f"用户消息：{query}\n"
+            f"你的任务：{intent}。请遵守能力边界与科学边界。"
+        )
+        response = llm.invoke(
+            [
+                ("system", _STATIC_SYSTEM_PROMPT),
+                ("human", user_content),
+            ]
+        )
+        text = _extract_llm_text(response)
+        return text or None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("LLM 静态叙述失败，回退固定话术：%s", exc)
+        return None
+
+
+def narrate_reply(kind: str, query: str = "") -> str:
+    """非用例分支的答复：chat/explanation 优先走 GLM，其余用固定话术。"""
+    if is_llm_enabled() and kind in _LLM_STATIC_KINDS:
+        text = _llm_static(kind, query)
+        if text:
+            return text
+    return narrate_static(kind)
 
 
 def _fmt(value: Any, default: str = "数据缺失") -> str:
@@ -300,19 +351,84 @@ _NARRATORS = {
 }
 
 
-def narrate(use_case: str, result: dict[str, Any] | None, *, query: str = "") -> str:
-    """基于用例结果生成答复；LLM 关闭时使用模板。"""
-    if result is None:
-        return narrate_static("clarified")
-
+def _template_narrate(use_case: str, result: dict[str, Any]) -> str:
+    """模板叙述（兜底 & LLM 关闭时使用）。"""
     narrator = _NARRATORS.get(use_case)
     if narrator is None:
         compact = json.dumps(result, ensure_ascii=False, default=str)
         if len(compact) > 2000:
             compact = compact[:2000] + "..."
         return f"已完成用例 {use_case}。\n\n结果摘要：{compact}\n\n{SCIENTIFIC_BOUNDARY}"
-
-    # 可选 LLM 叙述预留：当前默认模板；开启开关时仍走模板，避免依赖已删除的 agent 图
-    _ = is_llm_enabled()
-    _ = query
     return narrator(result)
+
+
+_NARRATE_SYSTEM_PROMPT = (
+    "你是地铁 AFC（自动售检票）设备运维诊断助手。"
+    "你会收到某个业务用例的结构化结果（JSON）以及用户的原始问题。"
+    "请用简洁、专业、面向一线运维人员的中文，把结果讲清楚。硬性要求：\n"
+    "1. 只能使用提供的数据，严禁编造设备编号、风险数值、故障类别、手册条目或任何未提供的事实；\n"
+    "2. 风险表示未来时间窗口内再次产生故障工单的可能性，不等于精确故障发生日期；\n"
+    "3. 维修建议是巡检方向参考，不是最终根因结论；故障类型的条件概率不得说成一定发生；\n"
+    "4. 若某项数据缺失，如实说明，不要臆测；若风险来自统计基线而非真实模型，需说明这是基线参考；\n"
+    "5. 输出纯文本，不要输出 JSON 或代码块，结尾附一句简短的科学边界提示。"
+)
+
+
+def _extract_llm_text(response: Any) -> str:
+    """从 LangChain 响应中提取纯文本。"""
+    content = getattr(response, "content", response)
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for chunk in content:
+            if isinstance(chunk, str):
+                parts.append(chunk)
+            elif isinstance(chunk, dict):
+                parts.append(str(chunk.get("text", "")))
+        return "".join(parts).strip()
+    return str(content).strip()
+
+
+def _compact_payload(result: dict[str, Any], limit: int = 3500) -> str:
+    compact = json.dumps(result, ensure_ascii=False, default=str)
+    if len(compact) > limit:
+        compact = compact[:limit] + "...(截断)"
+    return compact
+
+
+def _llm_narrate(use_case: str, result: dict[str, Any], query: str) -> str | None:
+    """调用 GLM 生成自然语言答复；失败返回 None 由调用方兜底。"""
+    try:
+        from backend.core.llm import get_conversation_llm
+
+        llm = get_conversation_llm()
+        user_content = (
+            f"用户问题：{query or '（未提供，请基于结果给出诊断说明）'}\n"
+            f"用例：{use_case}\n"
+            f"结构化结果（JSON）：\n{_compact_payload(result)}"
+        )
+        response = llm.invoke(
+            [
+                ("system", _NARRATE_SYSTEM_PROMPT),
+                ("human", user_content),
+            ]
+        )
+        text = _extract_llm_text(response)
+        return text or None
+    except Exception as exc:  # noqa: BLE001 — LLM 失败时静默兜底到模板
+        logger.warning("LLM 叙述失败，回退模板：%s", exc)
+        return None
+
+
+def narrate(use_case: str, result: dict[str, Any] | None, *, query: str = "") -> str:
+    """基于用例结果生成答复；LLM 开启且可用时用 GLM，否则/失败时用模板。"""
+    if result is None:
+        return narrate_static("clarified")
+
+    if is_llm_enabled():
+        llm_answer = _llm_narrate(use_case, result, query)
+        if llm_answer:
+            return llm_answer
+
+    return _template_narrate(use_case, result)

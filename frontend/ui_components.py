@@ -71,7 +71,7 @@ def render_page_header(
 def render_mode_card(st_module, llm_enabled: bool) -> None:
     if llm_enabled:
         title = "当前使用 LLM 模式"
-        copy = "模型能力已启用，系统会在结构化约束下完成意图理解与结果叙述。"
+        copy = "模型能力已启用：意图仍由规则路由到用例，答复由 GLM 叙述；护栏文案保持固定。"
         class_name = "afc-mode-card afc-mode-card--enabled"
     else:
         title = "当前使用规则兜底模式"

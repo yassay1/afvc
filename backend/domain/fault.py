@@ -1,6 +1,6 @@
 """故障类别领域定义 —— 统一故障枚举与展示名称。
 
-本模块定义 AFC 设备故障的标准分类，供 Adapter、Service、Agent 等各层使用。
+本模块定义 AFC 设备故障的标准分类，供 application / infrastructure 使用。
 所有故障类别以枚举形式定义，保证全系统一致。
 """
 

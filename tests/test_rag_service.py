@@ -1,6 +1,4 @@
-"""测试 RAG 维修手册检索服务。"""
-
-import pytest
+"""测试维修手册检索。"""
 
 from backend.infrastructure.manual_search import search_manual, _get_manual_files, _split_into_chunks, _keyword_score
 
@@ -44,9 +42,8 @@ class TestChunkSplitting:
 ## 节
 这一节有足够的内容来通过最小长度过滤。"""
         chunks = _split_into_chunks(text, min_length=10)
-        # "短。" 应被过滤
-        titles = [c["title"] for c in chunks]
         assert len(chunks) >= 1
+        assert all(c["title"] != "短" for c in chunks)
 
 
 class TestManualFiles:

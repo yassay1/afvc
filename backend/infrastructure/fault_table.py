@@ -1,4 +1,4 @@
-"""故障类型预测 Adapter —— 读取 fault_prediction_results.csv 并返回标准结果。
+"""故障类型预测结果表读取 —— 读取 fault_prediction_results.csv 并返回标准结果。
 
 职责：
 1. 定位 fault_prediction_results.csv
@@ -23,7 +23,6 @@ from typing import Any
 import polars as pl
 
 from backend.domain.fault import (
-    is_valid_fault_code,
     normalize_fault_code,
     FAULT_CODE_TO_NAME,
 )
@@ -34,7 +33,7 @@ from backend.schemas.fault_prediction import FaultTypeScore
 FAULT_PREDICTION_RESULT_PATH = (
     Path(__file__).resolve().parent.parent
     / "data"
-    / "mock"
+    / "mock"  # 历史目录名；内容是外部模型结果表，见该目录 README
     / "fault_prediction_results.csv"
 )
 

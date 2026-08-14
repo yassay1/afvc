@@ -1,8 +1,14 @@
-"""工单文件定位与读取（Infrastructure）。"""
+"""工单文件定位、Excel/CSV 解析，以及当前工作集加载。
+
+查询真相默认是 Postgres。Excel 只用于 import。
+紧急回退：AFVC_DATA_BACKEND=file 时读 backend/data/raw 最新文件。
+"""
 
 from pathlib import Path
 
 import polars as pl
+
+from backend.core.config import is_sql_backend
 
 
 RAW_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
@@ -20,7 +26,7 @@ REQUIRED_COLUMNS = [
 
 
 def get_latest_raw_file() -> Path:
-    """获取 backend/data/raw/ 目录下的工单文件。"""
+    """获取 backend/data/raw/ 目录下的工单文件（import 源，不再是查询真相）。"""
     DEFAULT_DATA_FILE = "afc非首次故障-L01线.xlsx"
 
     if not RAW_DATA_DIR.exists():
@@ -52,7 +58,7 @@ def get_latest_raw_file() -> Path:
 
 
 def read_workorder_file(file_path: Path | None = None) -> pl.DataFrame:
-    """使用 Polars 读取 AFC 工单 Excel / CSV 文件。"""
+    """解析 AFC 工单 Excel / CSV。显式路径用于 import；无路径时读最新 raw 文件。"""
     if file_path is None:
         file_path = get_latest_raw_file()
 
@@ -75,3 +81,26 @@ def read_workorder_file(file_path: Path | None = None) -> pl.DataFrame:
     })
 
     return df
+
+
+def load_workorders(*, include_id: bool = False) -> pl.DataFrame:
+    """当前工单工作集。默认 Postgres；file 回退时读最新 Excel/CSV。"""
+    if is_sql_backend():
+        from backend.infrastructure.workorder_repo import fetch_all_as_dataframe
+
+        return fetch_all_as_dataframe(include_id=include_id)
+    return read_workorder_file()
+
+
+def get_data_source_info() -> dict:
+    if is_sql_backend():
+        from backend.infrastructure.workorder_repo import get_data_source_info as sql_info
+
+        return sql_info()
+    latest_file = get_latest_raw_file()
+    return {
+        "current_file": latest_file.name,
+        "file_path": str(latest_file),
+        "backend": "file",
+        "import_batch_id": None,
+    }

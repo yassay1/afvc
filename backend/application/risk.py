@@ -7,7 +7,7 @@ from backend.infrastructure.risk_table import (
     get_external_prediction_by_assetnum,
     get_external_high_risk_predictions,
 )
-from backend.infrastructure.workorders import read_workorder_file
+from backend.infrastructure.workorders import load_workorders
 
 
 def _round_risk(value: float) -> float:
@@ -121,14 +121,13 @@ def _get_device_base_info(device_df: pl.DataFrame) -> dict[str, Any]:
 
 def _predict_from_df(df: pl.DataFrame, assetnum: str) -> dict[str, Any]:
     """
-    基于当前工单数据，为单台设备生成模拟风险预测结果。
+    基于当前工单数据，为单台设备生成可解释的**统计基线**风险估计。
 
-    第一版说明：
-    这里不是机器学习模型，而是 mock 风险服务。
-    目的：
-    1. 先跑通后端接口；
-    2. 先支持前端展示；
-    3. 后续可以替换为队友真实模型。
+    说明：
+    这不是机器学习模型，而是基于真实工单频次与复发间隔的规则基线，
+    用于在真实预测模型结果表接入前提供可解释、可运行的风险参考。
+    一旦外部模型结果表（prediction_results.csv）到位，
+    predict_device_risk 会自动优先使用模型结果，本基线退居兜底。
     """
     target_assetnum = assetnum.strip()
     device_df = _extract_device_df(df, target_assetnum)
@@ -201,7 +200,8 @@ def _predict_from_df(df: pl.DataFrame, assetnum: str) -> dict[str, Any]:
 
     return {
         "status": "success",
-        "message": "设备故障工单复发风险模拟预测成功",
+        "message": "设备故障工单复发风险统计基线估计成功",
+        "prediction_tier": "statistical_baseline",
         "assetnum": target_assetnum,
         "station_name": base_info.get("station_name"),
         "line": base_info.get("line"),
@@ -222,7 +222,7 @@ def _predict_from_df(df: pl.DataFrame, assetnum: str) -> dict[str, Any]:
             "recent_90d_workorder_count_in_dataset": recent_90_count,
             "average_interval_days": round(average_interval_days, 2) if average_interval_days is not None else None,
         },
-        "model_note": "当前结果由第一版 mock 预测服务生成，用于系统联调和比赛演示；后续可替换为队友训练的真实预测模型。",
+        "model_note": "当前风险为可解释的统计基线（基于历史工单频次与复发间隔的规则估计，非机器学习模型）；真实预测模型结果表接入后将自动优先使用模型输出。",
         "risk_statement": "本系统预测的是未来多个时间窗口内再次产生故障工单的风险，不等同于精确预测真实物理故障发生日期。",
     }
 
@@ -232,13 +232,13 @@ def predict_device_risk(assetnum: str) -> dict[str, Any]:
     对外暴露的单设备预测接口。
 
     当前逻辑：
-    1. 优先尝试读取外部预测结果表；
-    2. 如果没有外部预测结果，则回退到 mock 预测；
+    1. 优先尝试读取外部预测结果表（真实模型）；
+    2. 如果没有外部预测结果，则回退到可解释的统计基线；
     3. FastAPI 路由和 Streamlit 前端不需要关心预测来源。
     """
     target_assetnum = assetnum.strip()
 
-    df = read_workorder_file()
+    df = load_workorders()
 
     external_prediction = get_external_prediction_by_assetnum(target_assetnum)
 
@@ -258,6 +258,7 @@ def predict_device_risk(assetnum: str) -> dict[str, Any]:
         return {
             "status": "success",
             "message": "设备故障工单复发风险预测成功",
+            "prediction_tier": "model",
             "assetnum": target_assetnum,
             "station_name": base_info.get("station_name"),
             "line": base_info.get("line"),
@@ -292,16 +293,16 @@ def list_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
 
     当前逻辑：
     1. 如果存在外部预测结果表 prediction_results.csv，
-       优先按外部预测结果的 risk_90d 生成高风险设备清单；
+       优先按模型预测的 risk_90d 生成高风险设备清单；
     2. 如果不存在外部预测结果表，
-       回退到第一版 mock 预测排序。
+       回退到统计基线排序（基于真实工单频次/间隔的可解释规则）。
 
     这样做的好处：
-    - 队友模型完成后，只需要提供预测结果表；
-    - 前端和 Agent 不需要改；
+    - 真实模型完成后，只需要提供预测结果表；
+    - 前端和对话入口不需要改；
     - 高风险设备页可以直接展示真实模型输出。
     """
-    df = read_workorder_file()
+    df = load_workorders()
 
     if "assetnum" not in df.columns:
         raise ValueError("数据中缺少 assetnum 字段，无法生成高风险设备列表")
@@ -353,10 +354,11 @@ def list_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
             "top_n": top_n,
             "devices": risk_records,
             "prediction_source": "external_prediction_csv",
-            "model_note": "当前高风险设备清单来自队友或外部模型输出的 prediction_results.csv 文件。",
+            "prediction_tier": "model",
+            "model_note": "当前高风险设备清单来自外部预测模型输出的 prediction_results.csv 文件。",
         }
 
-    # 2. 没有外部预测结果表时，回退到 mock 预测
+    # 2. 没有外部预测结果表时，回退到统计基线
     assetnums = (
         df
         .select(
@@ -406,6 +408,7 @@ def list_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
         "message": "高风险设备 Top N 生成成功",
         "top_n": top_n,
         "devices": risk_records,
-        "prediction_source": "mock_prediction_service",
-        "model_note": "当前高风险排序基于 mock 预测服务；后续可替换为队友真实模型输出。",
+        "prediction_source": "statistical_baseline",
+        "prediction_tier": "statistical_baseline",
+        "model_note": "当前高风险排序基于可解释的统计基线（真实工单频次/间隔规则）；真实预测模型结果表接入后将自动优先使用模型输出。",
     }

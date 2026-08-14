@@ -14,8 +14,6 @@ from backend.domain.fault import (
 )
 from backend.domain.risk import (
     SUPPORTED_PREDICTION_WINDOWS,
-    PROBABILITY_MIN,
-    PROBABILITY_MAX,
     compute_estimated_occurrence_probability,
     validate_probability_range,
     validate_risk_monotonicity,

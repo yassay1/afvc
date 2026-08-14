@@ -8,7 +8,7 @@ import polars as pl
 PREDICTION_RESULT_PATH = (
     Path(__file__).resolve().parent.parent
     / "data"
-    / "mock"
+    / "mock"  # 历史目录名；内容是外部模型结果表，见该目录 README
     / "prediction_results.csv"
 )
 
@@ -75,6 +75,7 @@ def load_prediction_result_table() -> pl.DataFrame:
 
     当前默认路径：
     backend/data/mock/prediction_results.csv
+    （目录名历史遗留，文件为外部模型输出，不是 statistical baseline）
     """
     if not PREDICTION_RESULT_PATH.exists():
         raise FileNotFoundError(
@@ -108,7 +109,7 @@ def get_external_prediction_by_assetnum(assetnum: str) -> dict[str, Any] | None:
     根据设备编号，从外部预测结果表中读取预测结果。
 
     如果没有预测文件，或预测表中没有该设备，则返回 None。
-    prediction_service.py 可以继续回退到 mock 预测。
+    调用方（application.risk）在无表或无该设备时回退到 statistical baseline。
     """
     if not has_external_prediction_file():
         return None

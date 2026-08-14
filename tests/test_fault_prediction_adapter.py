@@ -1,9 +1,4 @@
-"""故障类型预测 Adapter 单元测试。
-
-测试 backend/adapters/fault_prediction_adapter.py 的 CSV 读取与校验。
-"""
-
-import pytest
+"""故障类型预测结果表单元测试。"""
 
 from backend.infrastructure.fault_table import (
     has_fault_prediction_file,
@@ -16,7 +11,7 @@ class TestFaultPredictionFile:
     """CSV 文件存在性测试。"""
 
     def test_has_fault_prediction_file(self):
-        """mock CSV 文件应存在。"""
+        """外部故障类型结果 CSV 应存在。"""
         assert has_fault_prediction_file() is True
 
     def test_load_prediction_table(self):

@@ -1,0 +1,233 @@
+"""封闭 Tool 注册表。Main Agent 看到的是具体能力，不是 data_op 枚举。"""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+from langchain_core.tools import StructuredTool
+
+from backend.agent.data_subgraph import invoke_data_capability
+from backend.agent.runtime_context import get_thread_id
+from backend.application import usecases
+from backend.application.capabilities import CAPABILITIES, ToolTier, exposed_capability_names
+from backend.application.approvals import propose_write
+from backend.schemas.workorder_writes import (
+    DeleteWorkorderInput,
+    ImportWorkordersInput,
+    InsertWorkorderInput,
+    UpdateWorkorderInput,
+)
+
+TOOL_RESULT_CHAR_LIMIT = 12000
+TOOL_REGISTRY = CAPABILITIES
+
+
+def dumps_tool_result(payload: Any) -> str:
+    text = json.dumps(payload, ensure_ascii=False, default=str)
+    if len(text) <= TOOL_RESULT_CHAR_LIMIT:
+        return text
+    return text[:TOOL_RESULT_CHAR_LIMIT] + "…(truncated)"
+
+
+def _proposal_payload(action: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "executed": False,
+        "status": action["status"],
+        "action_id": action["action_id"],
+        "summary": action["summary"],
+        "message": (
+            "操作尚未执行，已生成待审批单据。"
+            "请用户在界面点击批准后才会写入数据库。"
+            "用户说「好的 / 确认 / 行」不等于批准。"
+        ),
+    }
+
+
+def _get_overview(top_n: int = 10) -> str:
+    """查询当前工单工作集的数据概览：数量、站点/线路/品牌分布、时间范围。不需要设备编号。"""
+    return dumps_tool_result(invoke_data_capability("get_overview", top_n=top_n))
+
+
+def _get_device_history(assetnum: str, limit: int = 20) -> str:
+    """查询一台设备的历史工单（现象描述、时间、品牌/子系统等）。需要设备编号 assetnum。"""
+    return dumps_tool_result(
+        invoke_data_capability("get_device_history", assetnum=assetnum, limit=limit)
+    )
+
+
+def _list_high_risk(top_n: int = 10) -> str:
+    """列出当前工作集中复发风险较高的设备，用于巡检优先级。不需要设备编号。"""
+    return dumps_tool_result(usecases.list_high_risk_devices(top_n=top_n))
+
+
+def _predict_device_risk(assetnum: str) -> str:
+    """预测一台设备在未来窗口内再次产生故障工单的风险。需要设备编号。风险不是故障日期。"""
+    return dumps_tool_result(usecases.predict_device_risk(assetnum=assetnum))
+
+
+def _predict_fault_type(assetnum: str, window_days: int = 30) -> str:
+    """给出一台设备在窗口内的故障类型参考（条件概率，不是必然发生）。需要设备编号。"""
+    return dumps_tool_result(
+        usecases.predict_fault_type(assetnum=assetnum, window_days=window_days)
+    )
+
+
+def _advise_maintenance(assetnum: str) -> str:
+    """根据历史工单现象给出巡检/维修建议方向。需要设备编号。建议不是根因结论。"""
+    return dumps_tool_result(usecases.advise_maintenance(assetnum=assetnum))
+
+
+def _search_manual(query: str, assetnum: str | None = None) -> str:
+    """检索维修手册片段。query 为故障现象或关键词；设备编号可选，用于收窄。"""
+    return dumps_tool_result(usecases.search_manual(query=query, assetnum=assetnum))
+
+
+def _diagnose_device(assetnum: str) -> str:
+    """可选的综合诊断快捷工具：聚合历史、风险、建议、故障类型。需要设备编号。也可改用原子工具逐步查询。"""
+    return dumps_tool_result(usecases.diagnose_device(assetnum=assetnum))
+
+
+def _insert_workorder(
+    assetnum: str,
+    station_name: str | None = None,
+    cust_linenum: str | None = None,
+    current_faildate: str | None = None,
+    prev_faildate: str | None = None,
+    total_failure_count: str | None = None,
+    description: str | None = None,
+    cust_brand: str | None = None,
+    cust_subsys: str | None = None,
+    worktype: str | None = None,
+    pre_type: str | None = None,
+    pre_value: str | None = None,
+) -> str:
+    """提案：新增一条工单。不会立即写库，需用户在界面显式批准。不要自行编造 action_id。"""
+    payload = InsertWorkorderInput(
+        assetnum=assetnum,
+        station_name=station_name,
+        cust_linenum=cust_linenum,
+        current_faildate=current_faildate,
+        prev_faildate=prev_faildate,
+        total_failure_count=total_failure_count,
+        description=description,
+        cust_brand=cust_brand,
+        cust_subsys=cust_subsys,
+        worktype=worktype,
+        pre_type=pre_type,
+        pre_value=pre_value,
+    ).model_dump(exclude_none=True)
+    action = propose_write(thread_id=get_thread_id(), tool_name="insert_workorder", payload=payload)
+    return dumps_tool_result(_proposal_payload(action))
+
+
+def _update_workorder(
+    workorder_id: str,
+    assetnum: str | None = None,
+    station_name: str | None = None,
+    cust_linenum: str | None = None,
+    current_faildate: str | None = None,
+    prev_faildate: str | None = None,
+    total_failure_count: str | None = None,
+    description: str | None = None,
+    cust_brand: str | None = None,
+    cust_subsys: str | None = None,
+    worktype: str | None = None,
+    pre_type: str | None = None,
+    pre_value: str | None = None,
+) -> str:
+    """提案：按工单 ID 更新业务字段。不会立即写库，需界面显式批准。workorder_id 来自历史查询。"""
+    payload = UpdateWorkorderInput(
+        workorder_id=workorder_id,
+        assetnum=assetnum,
+        station_name=station_name,
+        cust_linenum=cust_linenum,
+        current_faildate=current_faildate,
+        prev_faildate=prev_faildate,
+        total_failure_count=total_failure_count,
+        description=description,
+        cust_brand=cust_brand,
+        cust_subsys=cust_subsys,
+        worktype=worktype,
+        pre_type=pre_type,
+        pre_value=pre_value,
+    ).model_dump(exclude_none=True)
+    action = propose_write(thread_id=get_thread_id(), tool_name="update_workorder", payload=payload)
+    return dumps_tool_result(_proposal_payload(action))
+
+
+def _delete_workorder(workorder_id: str) -> str:
+    """提案：按工单 ID 删除一条工单。不会立即写库，需界面显式批准。"""
+    payload = DeleteWorkorderInput(workorder_id=workorder_id).model_dump()
+    action = propose_write(thread_id=get_thread_id(), tool_name="delete_workorder", payload=payload)
+    return dumps_tool_result(_proposal_payload(action))
+
+
+def _import_workorders(source_filename: str, mode: str = "replace") -> str:
+    """提案：将 raw 目录中已有 Excel/CSV 导入工单库。不会立即写库，需界面显式批准。mode 为 replace 或 append。"""
+    payload = ImportWorkordersInput(source_filename=source_filename, mode=mode).model_dump()
+    action = propose_write(thread_id=get_thread_id(), tool_name="import_workorders", payload=payload)
+    return dumps_tool_result(_proposal_payload(action))
+
+
+_TOOL_BUILDERS = {
+    "get_overview": lambda: StructuredTool.from_function(_get_overview, name="get_overview"),
+    "get_device_history": lambda: StructuredTool.from_function(
+        _get_device_history, name="get_device_history"
+    ),
+    "list_high_risk": lambda: StructuredTool.from_function(_list_high_risk, name="list_high_risk"),
+    "predict_device_risk": lambda: StructuredTool.from_function(
+        _predict_device_risk, name="predict_device_risk"
+    ),
+    "predict_fault_type": lambda: StructuredTool.from_function(
+        _predict_fault_type, name="predict_fault_type"
+    ),
+    "advise_maintenance": lambda: StructuredTool.from_function(
+        _advise_maintenance, name="advise_maintenance"
+    ),
+    "search_manual": lambda: StructuredTool.from_function(_search_manual, name="search_manual"),
+    "diagnose_device": lambda: StructuredTool.from_function(
+        _diagnose_device, name="diagnose_device"
+    ),
+    "insert_workorder": lambda: StructuredTool.from_function(
+        _insert_workorder, name="insert_workorder"
+    ),
+    "update_workorder": lambda: StructuredTool.from_function(
+        _update_workorder, name="update_workorder"
+    ),
+    "delete_workorder": lambda: StructuredTool.from_function(
+        _delete_workorder, name="delete_workorder"
+    ),
+    "import_workorders": lambda: StructuredTool.from_function(
+        _import_workorders, name="import_workorders"
+    ),
+}
+
+
+def build_exposed_tools() -> list[StructuredTool]:
+    tools: list[StructuredTool] = []
+    for name in exposed_capability_names():
+        builder = _TOOL_BUILDERS.get(name)
+        if builder is not None:
+            tools.append(builder())
+    return tools
+
+
+TOOL_TO_USE_CASE = {
+    "get_overview": "get_data_overview",
+    "get_device_history": "get_device_history",
+    "list_high_risk": "list_high_risk_devices",
+    "predict_device_risk": "predict_device_risk",
+    "predict_fault_type": "predict_fault_type",
+    "advise_maintenance": "advise_maintenance",
+    "search_manual": "search_manual",
+    "diagnose_device": "diagnose_device",
+    "insert_workorder": "insert_workorder",
+    "update_workorder": "update_workorder",
+    "delete_workorder": "delete_workorder",
+    "import_workorders": "import_workorders",
+}
+
+
+def sensitive_tool_names() -> list[str]:
+    return exposed_capability_names(tier=ToolTier.SENSITIVE)

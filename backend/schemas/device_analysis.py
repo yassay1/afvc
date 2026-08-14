@@ -38,7 +38,8 @@ class DeviceAnalysisResult(BaseModel):
     )
 
     called_tools: list[str] = Field(
-        default_factory=list, description="调用的子工具列表"
+        default_factory=list,
+        description="保留字段（旧 Agent 工具轨迹）；当前 diagnose_device 不填充",
     )
     analysis_statement: str = Field(
         default="", description="分析说明与科学边界声明"

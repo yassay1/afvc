@@ -2,7 +2,7 @@ from typing import Any
 
 import polars as pl
 
-from backend.infrastructure.workorders import read_workorder_file
+from backend.infrastructure.workorders import load_workorders
 
 
 def _json_safe_value(value: Any) -> Any:
@@ -40,7 +40,7 @@ def get_device_list() -> dict[str, Any]:
     2. 给单设备分析页面选择设备；
     3. 后续用于批量预测和高风险设备筛选。
     """
-    df = read_workorder_file()
+    df = load_workorders()
 
     if "assetnum" not in df.columns:
         raise ValueError("数据中缺少 assetnum 字段，无法生成设备列表")
@@ -90,7 +90,7 @@ def get_device_history(assetnum: str, limit: int = 50) -> dict[str, Any]:
     current_faildate 在本系统中表述为“工单记录时间”，
     不直接宣称其等同于真实物理故障发生时间。
     """
-    df = read_workorder_file()
+    df = load_workorders(include_id=True)
 
     if "assetnum" not in df.columns:
         raise ValueError("数据中缺少 assetnum 字段，无法查询设备历史")
@@ -127,6 +127,7 @@ def get_device_history(assetnum: str, limit: int = 50) -> dict[str, Any]:
             "cust_subsys",
             "pre_type",
             "pre_value",
+            "workorder_id",
         ]
         if column in history_df.columns
     ]

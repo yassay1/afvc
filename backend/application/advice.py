@@ -2,7 +2,7 @@ from typing import Any
 
 import polars as pl
 
-from backend.infrastructure.workorders import read_workorder_file
+from backend.infrastructure.workorders import load_workorders
 
 
 ADVICE_RULES = [
@@ -358,7 +358,7 @@ def _get_device_records(assetnum: str) -> pl.DataFrame:
     """
     获取某台设备的全部历史工单。
     """
-    df = read_workorder_file()
+    df = load_workorders()
     target_assetnum = assetnum.strip()
 
     if "assetnum" not in df.columns:
@@ -439,7 +439,7 @@ def advise_maintenance(assetnum: str) -> dict[str, Any]:
 
     注意：
     这里的建议基于工单故障现象，不直接等同于真实故障根因。
-    第一版采用规则模板，后续可升级为 RAG + Agent。
+    建议基于工单现象规则生成，不直接等同于真实故障根因。
     """
     target_assetnum = assetnum.strip()
     device_df = _get_device_records(target_assetnum)

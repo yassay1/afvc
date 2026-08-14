@@ -1,94 +1,104 @@
 # AFVC
 
-面向地铁 AFC（自动售检票）设备的**诊断能力平台**。
+面向地铁 AFC（自动售检票）设备的诊断能力平台。
 
-基于维修工单，提供可调用的数据概览、复发风险与预警、故障类型、维修建议、手册检索与综合诊断等能力。可选提供薄层自然语言入口，用于选用例、补全参数与结果叙述。
+基于维修工单提供数据查询/统计、风险与故障类型预测、维修建议与手册检索；控制台走 HTTP 用例，对话入口调用同一组能力。
 
-> 核心是 **Application（诊断用例）** 与 **Interaction（薄对话入口）**；Domain / Infrastructure 支撑前者，API / Frontend 暴露二者。
+## 产品三层
 
-## 能力
+| 层 | 做什么 | 代码 |
+|----|--------|------|
+| **数据** | 工单导入、概览统计、设备历史、行级 CRUD。Postgres 是真相，Excel 只是 import | `backend/application/overview.py` `history.py`，`infrastructure/workorder_repo.py`，`api/upload_api.py` |
+| **预测** | 复发风险、故障类型。有外部结果表则 `prediction_tier=model`，否则风险为 `statistical_baseline` | `backend/application/risk.py` `fault_type.py`，`infrastructure/risk_table.py` `fault_table.py` |
+| **对话** | `AFVC_USE_LLM=true` 时 LangGraph 主 Agent 自主选 Tool；写操作只提案，需界面批准；关闭则 understand 规则兜底 | `backend/agent/`，`backend/interaction/`，`api/interaction_api.py` |
 
-| 用例 | 说明 |
-|------|------|
-| 数据概览 | 工单整体统计 |
-| 高风险设备 | Top N 排行 |
-| 设备历史 | 单设备历史工单 |
-| 风险预测 | 多时间窗口复发风险与红橙黄绿预警 |
-| 维修建议 | 巡检方向与 SOP 参考 |
-| 手册检索 | 维修手册相关段落 |
-| 故障类型 | 类别条件概率与综合估计（有数据时） |
-| 综合诊断 | 单设备聚合分析（**唯一业务聚合点**） |
+建议 / 手册在 Application，对话可调用，不算数据管理。
 
-API 与对话入口暴露**同一组用例**；对话不单独发明业务能力。
+写操作 HITL：对话侧提案 → `pending_actions` → `POST /interaction/approve` 或 `/reject`。控制台上传仍直接写库。口语「好的」不会批准。
 
-## 架构鸟瞰
-
-```
-API            HTTP 契约
-Application    用例编排（业务唯一主人）
-Domain         纯规则（预警、故障类别、概率等）
-Infrastructure 工单/文件、检索实现、LLM 客户端等
-Interaction    可选：理解 → 澄清 → 调用用例 → 叙述
-Frontend       控制台 + 可选 Chat
-```
-
-分层、边界与禁区见 [docs/architecture.md](docs/architecture.md)。
+分层细节：[docs/architecture.md](docs/architecture.md)。工程约定：[docs/engineering.md](docs/engineering.md)。
 
 ## 科学边界
 
-- 风险表示未来窗口内再次产生故障工单的可能性，**不等于**精确故障日期
-- 维修建议是巡检参考，**不是**最终根因结论
-- 故障类型概率表示相对可能性，**不得**把条件概率说成必然发生
+- 风险 = 窗口内再次产生故障工单的可能性，不是故障日期
+- 维修建议 = 巡检参考，不是根因结论
+- 故障类型条件概率不得说成必然发生
 
 ## 技术栈
 
-Python · FastAPI ·（可选）薄对话层 · Streamlit 前端 · Polars / Pydantic
+Python 3.12 · FastAPI · Streamlit · Polars · PostgreSQL · LangGraph · 可选智谱 GLM（OpenAI 兼容）
 
-## 快速开始
+工单工作集在 Postgres `business.workorders`。Excel/CSV 经 `POST /upload/workorders` 或 `scripts/import_default_xlsx.py` 导入。模型结果仍读 `backend/data/mock/`（目录名历史遗留，见该目录 README）。紧急回退：`AFVC_DATA_BACKEND=file`。
+
+## 安装与配置
 
 ```bash
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env   # 按需配置；对话/LLM 可关闭
+cp .env.example .env
+```
 
-# 终端 1：API
+编辑 `.env`：填智谱 API Key；对话主 Agent 设 `AFVC_USE_LLM=true`（并保持 `AFVC_AGENT_GRAPH=true`）。配置只从 `backend/core/config.py` 读取。
+
+## 启动
+
+```bash
+docker compose up -d
+python scripts/import_default_xlsx.py   # 空库时应用启动也会自动导入默认 xlsx
+# 终端 1
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-
-# 终端 2：前端
+# 终端 2
 streamlit run frontend/streamlit_app.py
 ```
 
 健康检查：`GET http://127.0.0.1:8000/health`
 
-## HTTP 路径
+## HTTP
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/health` | 健康检查 |
-| POST | `/upload/workorders` | 上传工单文件 |
-| GET | `/usecases/overview?top_n=` | 数据概览 |
-| GET | `/usecases/high-risk?top_n=` | 高风险设备 Top N |
-| GET | `/usecases/devices/{assetnum}/history` | 设备历史 |
-| GET | `/usecases/devices/{assetnum}/risk` | 设备风险预测 |
-| GET | `/usecases/devices/{assetnum}/advice` | 维护建议 |
-| GET | `/usecases/devices/{assetnum}/fault-type` | 故障类型预测 |
-| GET | `/usecases/devices/{assetnum}/diagnosis` | 综合诊断 |
-| GET | `/usecases/manuals/search?query=` | 手册检索 |
-| POST | `/interaction/turn` | 薄对话一轮（body: `query`, `session_id`） |
+| 方法 | 路径 | 层 |
+|------|------|-----|
+| GET | `/health` | 运维 |
+| POST | `/upload/workorders` | 数据 |
+| GET | `/usecases/overview` | 数据 |
+| GET | `/usecases/high-risk` | 预测 |
+| GET | `/usecases/devices/{assetnum}/history` | 数据 |
+| GET | `/usecases/devices/{assetnum}/risk` | 预测 |
+| GET | `/usecases/devices/{assetnum}/advice` | 应用 |
+| GET | `/usecases/devices/{assetnum}/fault-type` | 预测 |
+| GET | `/usecases/devices/{assetnum}/diagnosis` | Application 聚合 |
+| GET | `/usecases/manuals/search` | 应用 |
+| POST | `/interaction/turn` | 对话 |
+| POST | `/interaction/approve` | 对话 HITL |
+| POST | `/interaction/reject` | 对话 HITL |
+| GET | `/interaction/sessions/{session_id}/pending` | 对话 HITL |
 
-前端控制台直接调用 `/usecases/*` 与 `/upload/workorders`；对话工作台只调用 `POST /interaction/turn`。
+控制台打 `/usecases/*` 与上传；对话工作台打 `/interaction/turn`，待批卡片打 approve/reject。
 
 ## 测试
 
 ```bash
 pytest
+python scripts/check_text_integrity.py
+python -m ruff check backend frontend tests scripts
 ```
 
-## 文档
+默认 `AFVC_USE_LLM=false`，不打真实模型。
 
-| 文档 | 说明 |
-|------|------|
-| [docs/architecture.md](docs/architecture.md) | 目标架构、模块分工、Interaction 边界 |
-| [docs/project-brief.md](docs/project-brief.md) | 项目简述 |
-| `.env.example` | 环境变量模板 |
+## 目录
+
+```
+backend/api/             FastAPI 路由
+backend/application/     用例（业务编排）
+backend/agent/           LangGraph 主图、Tool 注册表、数据子图
+backend/domain/          纯规则
+backend/infrastructure/  Postgres / Excel 解析 / CSV / 会话内存 / 手册检索
+backend/interaction/     LLM 关闭或主图失败时的规则兜底
+backend/core/            配置、LLM 客户端
+backend/schemas/         Pydantic 契约
+backend/data/            raw 工单（import 源）、模型结果 CSV、手册
+frontend/               Streamlit
+tests/                  pytest
+docs/                   架构、工程约定、Agent spec
+scripts/                SQL 迁移、默认 xlsx 导入、文本检查、LLM 连通性
+```

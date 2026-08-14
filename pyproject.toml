@@ -1,0 +1,18 @@
+[project]
+name = "afvc"
+version = "0.3.0"
+description = "AFC 诊断能力平台"
+requires-python = ">=3.12"
+readme = "README.md"
+
+# 运行时依赖仍以 requirements.txt 为安装来源。
+# pytest 配置在 pytest.ini，避免两套入口。
+
+[tool.ruff]
+target-version = "py312"
+src = ["backend", "frontend", "tests", "scripts"]
+line-length = 120
+
+[tool.ruff.lint]
+# 最小基线：未使用导入/变量。不做全仓 format，避免无收益的大 diff。
+select = ["F401", "F841"]

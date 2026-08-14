@@ -134,8 +134,8 @@ def diagnose_device(assetnum: str, history_limit: int = 50) -> dict[str, Any]:
         "maintenance_advice": maintenance_advice,
         "fault_prediction": fault_prediction,
         "analysis_statement": (
-            "本分析基于历史维修工单记录、模拟风险预测和规则维修建议生成。"
-            "系统预测的是未来多个时间窗口内再次产生故障工单的风险，"
+            "本分析基于历史维修工单记录、风险预测（真实模型结果表接入前为可解释统计基线）"
+            "和规则维修建议生成。系统预测的是未来多个时间窗口内再次产生故障工单的风险，"
             "不等同于精确预测真实物理故障发生日期。维修建议仅作为巡检方向参考，"
             "不代表系统已经准确判断真实故障根因。"
         ),

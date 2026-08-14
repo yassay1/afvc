@@ -171,6 +171,7 @@ def _init_chat_session() -> None:
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
+    st.session_state.setdefault("agent_pending_actions", [])
 
 
 def _new_chat_session() -> None:
@@ -179,6 +180,7 @@ def _new_chat_session() -> None:
     st.session_state["agent_last_assetnum"] = None
     st.session_state["agent_last_use_case"] = None
     st.session_state["agent_is_processing"] = False
+    st.session_state["agent_pending_actions"] = []
 
 
 def _clear_stale_agent_processing() -> None:
@@ -204,7 +206,7 @@ def _handle_agent_query(question: str) -> bool:
     st.session_state["agent_messages"].append({"role": "user", "content": question, "meta": None})
 
     try:
-        thinking_placeholder.markdown("AFC Agent 正在分析问题并整理证据……")
+        thinking_placeholder.markdown("正在调用诊断能力并整理答复……")
         result = _interaction_turn(question)
 
         if not result:
@@ -232,6 +234,7 @@ def _handle_agent_query(question: str) -> bool:
                 },
             }
         )
+        st.session_state["agent_pending_actions"] = result.get("pending_actions") or []
         return True
     except Exception as exc:
         st.session_state["agent_messages"].append(
@@ -258,6 +261,49 @@ def _render_message_meta(meta: dict[str, Any]) -> None:
         bits.append(f"会话 {str(meta['session_id'])[:8]}")
     if bits:
         st.caption(" · ".join(bits))
+
+
+def _resolve_pending_action(action_id: str, decision: str) -> None:
+    path = "/interaction/approve" if decision == "approve" else "/interaction/reject"
+    result = api_post(
+        path,
+        {
+            "session_id": st.session_state.get("agent_session_id"),
+            "action_id": action_id,
+        },
+    )
+    if not result:
+        return
+    st.session_state["agent_pending_actions"] = result.get("pending_actions") or []
+    st.session_state["agent_messages"].append(
+        {
+            "role": "assistant",
+            "content": result.get("final_answer") or "审批已完成。",
+            "meta": {"status": result.get("status"), "session_id": result.get("session_id")},
+        }
+    )
+
+
+def _render_pending_actions() -> None:
+    pending = st.session_state.get("agent_pending_actions") or []
+    if not pending:
+        return
+    st.markdown('<div class="afc-section-label">待批准写操作</div>', unsafe_allow_html=True)
+    st.caption("这些操作尚未写入数据库。请点批准或拒绝；在对话里说「好的」不会生效。")
+    for action in pending:
+        action_id = action.get("action_id")
+        with st.container(border=True):
+            st.write(action.get("summary") or action.get("tool_name"))
+            st.caption(f"{action.get('tool_name')} · {action_id}")
+            col_ok, col_no = st.columns(2)
+            with col_ok:
+                if st.button("批准", key=f"approve_{action_id}", use_container_width=True):
+                    _resolve_pending_action(action_id, "approve")
+                    st.rerun()
+            with col_no:
+                if st.button("拒绝", key=f"reject_{action_id}", use_container_width=True):
+                    _resolve_pending_action(action_id, "reject")
+                    st.rerun()
 
 
 def page_chat() -> None:
@@ -318,6 +364,8 @@ def page_chat() -> None:
             st.markdown(message.get("content") or "（空消息）")
             if role == "assistant" and message.get("meta"):
                 _render_message_meta(message["meta"])
+
+    _render_pending_actions()
 
     prompt = st.chat_input("请输入设备编号、故障现象或维护问题")
     if prompt and not st.session_state.get("agent_is_processing", False):
