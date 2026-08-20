@@ -62,7 +62,7 @@ def narrate_static(kind: str) -> str:
     return mapping.get(kind, CHAT_TEXT)
 
 
-# chat / explanation 属于对话性文本，LLM 可用时用 GLM 生成更自然的答复；
+# chat / explanation 属于对话性文本，LLM 可用时用模型生成更自然的答复；
 # capability / clarified / rejected 是能力边界与澄清提示，属于护栏文案，保持固定。
 _LLM_STATIC_KINDS = {"chat", "explanation"}
 
@@ -78,7 +78,7 @@ _STATIC_SYSTEM_PROMPT = (
 
 
 def _llm_static(kind: str, query: str) -> str | None:
-    """chat / explanation 的 GLM 生成；失败返回 None 由调用方兜底。"""
+    """chat / explanation 的 LLM 生成；失败返回 None 由调用方兜底。"""
     try:
         from backend.core.llm import get_conversation_llm
 
@@ -102,7 +102,7 @@ def _llm_static(kind: str, query: str) -> str | None:
 
 
 def narrate_reply(kind: str, query: str = "") -> str:
-    """非用例分支的答复：chat/explanation 优先走 GLM，其余用固定话术。"""
+    """非用例分支的答复：chat/explanation 优先走 LLM，其余用固定话术。"""
     if is_llm_enabled() and kind in _LLM_STATIC_KINDS:
         text = _llm_static(kind, query)
         if text:
@@ -398,7 +398,7 @@ def _compact_payload(result: dict[str, Any], limit: int = 3500) -> str:
 
 
 def _llm_narrate(use_case: str, result: dict[str, Any], query: str) -> str | None:
-    """调用 GLM 生成自然语言答复；失败返回 None 由调用方兜底。"""
+    """调用 LLM 生成自然语言答复；失败返回 None 由调用方兜底。"""
     try:
         from backend.core.llm import get_conversation_llm
 
@@ -422,7 +422,7 @@ def _llm_narrate(use_case: str, result: dict[str, Any], query: str) -> str | Non
 
 
 def narrate(use_case: str, result: dict[str, Any] | None, *, query: str = "") -> str:
-    """基于用例结果生成答复；LLM 开启且可用时用 GLM，否则/失败时用模板。"""
+    """基于用例结果生成答复；LLM 开启且可用时用模型生成，否则/失败时用模板。"""
     if result is None:
         return narrate_static("clarified")
 

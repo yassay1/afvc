@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from functools import wraps
+
 from langchain_core.tools import StructuredTool
+from pydantic import ValidationError
 
 from backend.agent.data_subgraph import invoke_data_capability
 from backend.agent.runtime_context import get_thread_id
@@ -30,6 +33,19 @@ def dumps_tool_result(payload: Any) -> str:
     return text[:TOOL_RESULT_CHAR_LIMIT] + "…(truncated)"
 
 
+def _domain_error_as_result(fn):
+    """Return domain/validation errors to the model; do not crash the graph run."""
+
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except (ValueError, ValidationError) as exc:
+            return dumps_tool_result({"ok": False, "error": str(exc)})
+
+    return wrapped
+
+
 def _proposal_payload(action: dict[str, Any]) -> dict[str, Any]:
     return {
         "executed": False,
@@ -50,7 +66,7 @@ def _get_overview(top_n: int = 10) -> str:
 
 
 def _get_device_history(assetnum: str, limit: int = 20) -> str:
-    """查询一台设备的历史工单（现象描述、时间、品牌/子系统等）。需要设备编号 assetnum。"""
+    """查询一台设备的历史工单（现象描述、时间、品牌/子系统等）。需要设备编号 assetnum。查不到时返回错误 JSON，不要因此中断。"""
     return dumps_tool_result(
         invoke_data_capability("get_device_history", assetnum=assetnum, limit=limit)
     )
@@ -84,7 +100,7 @@ def _search_manual(query: str, assetnum: str | None = None) -> str:
 
 
 def _diagnose_device(assetnum: str) -> str:
-    """可选的综合诊断快捷工具：聚合历史、风险、建议、故障类型。需要设备编号。也可改用原子工具逐步查询。"""
+    """综合诊断快捷工具：一次聚合历史、风险、建议、故障类型。需要设备编号。若只要其中一项，请改用对应原子工具。"""
     return dumps_tool_result(usecases.diagnose_device(assetnum=assetnum))
 
 
@@ -102,7 +118,7 @@ def _insert_workorder(
     pre_type: str | None = None,
     pre_value: str | None = None,
 ) -> str:
-    """提案：新增一条工单。不会立即写库，需用户在界面显式批准。不要自行编造 action_id。"""
+    """提案：新增一条工单。最少只需 assetnum，其他字段可选、缺省可留空。不要为补全可选字段先查历史。不会立即写库，需用户在界面显式批准。不要自行编造 action_id。"""
     payload = InsertWorkorderInput(
         assetnum=assetnum,
         station_name=station_name,
@@ -171,35 +187,41 @@ def _import_workorders(source_filename: str, mode: str = "replace") -> str:
 
 
 _TOOL_BUILDERS = {
-    "get_overview": lambda: StructuredTool.from_function(_get_overview, name="get_overview"),
-    "get_device_history": lambda: StructuredTool.from_function(
-        _get_device_history, name="get_device_history"
+    "get_overview": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_get_overview), name="get_overview"
     ),
-    "list_high_risk": lambda: StructuredTool.from_function(_list_high_risk, name="list_high_risk"),
+    "get_device_history": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_get_device_history), name="get_device_history"
+    ),
+    "list_high_risk": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_list_high_risk), name="list_high_risk"
+    ),
     "predict_device_risk": lambda: StructuredTool.from_function(
-        _predict_device_risk, name="predict_device_risk"
+        _domain_error_as_result(_predict_device_risk), name="predict_device_risk"
     ),
     "predict_fault_type": lambda: StructuredTool.from_function(
-        _predict_fault_type, name="predict_fault_type"
+        _domain_error_as_result(_predict_fault_type), name="predict_fault_type"
     ),
     "advise_maintenance": lambda: StructuredTool.from_function(
-        _advise_maintenance, name="advise_maintenance"
+        _domain_error_as_result(_advise_maintenance), name="advise_maintenance"
     ),
-    "search_manual": lambda: StructuredTool.from_function(_search_manual, name="search_manual"),
+    "search_manual": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_search_manual), name="search_manual"
+    ),
     "diagnose_device": lambda: StructuredTool.from_function(
-        _diagnose_device, name="diagnose_device"
+        _domain_error_as_result(_diagnose_device), name="diagnose_device"
     ),
     "insert_workorder": lambda: StructuredTool.from_function(
-        _insert_workorder, name="insert_workorder"
+        _domain_error_as_result(_insert_workorder), name="insert_workorder"
     ),
     "update_workorder": lambda: StructuredTool.from_function(
-        _update_workorder, name="update_workorder"
+        _domain_error_as_result(_update_workorder), name="update_workorder"
     ),
     "delete_workorder": lambda: StructuredTool.from_function(
-        _delete_workorder, name="delete_workorder"
+        _domain_error_as_result(_delete_workorder), name="delete_workorder"
     ),
     "import_workorders": lambda: StructuredTool.from_function(
-        _import_workorders, name="import_workorders"
+        _domain_error_as_result(_import_workorders), name="import_workorders"
     ),
 }
 

@@ -14,7 +14,7 @@ from backend.agent.guardrails import SYSTEM_PROMPT
 from backend.agent.runtime_context import thread_context
 from backend.agent.state import AgentState
 from backend.agent.tools import TOOL_TO_USE_CASE, build_exposed_tools
-from backend.core.config import is_sql_backend, should_use_agent_graph
+from backend.core.config import get_openai_model, is_sql_backend, should_use_agent_graph
 from backend.core.errors import LLMUnavailableError, is_llm_unavailable
 
 logger = logging.getLogger("afvc.agent")
@@ -22,6 +22,16 @@ logger = logging.getLogger("afvc.agent")
 MAX_TOOL_ROUNDS = 8
 
 _compiled = None
+
+
+def _messages_for_current_turn(messages: list[BaseMessage]) -> list[BaseMessage]:
+    last_human = -1
+    for index, message in enumerate(messages):
+        if isinstance(message, HumanMessage):
+            last_human = index
+    if last_human < 0:
+        return messages
+    return messages[last_human + 1 :]
 
 
 def _extract_assetnum(messages: list[BaseMessage]) -> str | None:
@@ -49,18 +59,22 @@ def _last_tool_name(messages: list[BaseMessage]) -> str | None:
 
 
 def tool_trace(messages: list[BaseMessage]) -> list[str]:
+    """Tools executed in the current user turn, not the whole thread."""
+    window = _messages_for_current_turn(messages)
+    executed = [
+        str(message.name)
+        for message in window
+        if isinstance(message, ToolMessage) and getattr(message, "name", None)
+    ]
+    if executed:
+        return executed
     names: list[str] = []
-    for message in messages:
-        if isinstance(message, ToolMessage) and getattr(message, "name", None):
-            names.append(str(message.name))
-            continue
+    for message in window:
         for call in getattr(message, "tool_calls", None) or []:
             name = call.get("name") if isinstance(call, dict) else getattr(call, "name", None)
             if name:
                 names.append(str(name))
-    # Prefer actual ToolMessage execution order when present.
-    executed = [str(m.name) for m in messages if isinstance(m, ToolMessage) and getattr(m, "name", None)]
-    return executed or names
+    return names
 
 
 def final_answer_from_state(state: dict[str, Any]) -> str:
@@ -83,10 +97,21 @@ def final_answer_from_state(state: dict[str, Any]) -> str:
 
 
 def last_use_case_from_state(state: dict[str, Any]) -> str | None:
-    name = _last_tool_name(state.get("messages") or [])
+    name = _last_tool_name(_messages_for_current_turn(state.get("messages") or []))
     if not name:
         return None
     return TOOL_TO_USE_CASE.get(name, name)
+
+
+def _system_messages(state: AgentState) -> list[SystemMessage]:
+    asset = (state.get("last_assetnum") or "").strip()
+    prompt = SYSTEM_PROMPT
+    if asset:
+        prompt += (
+            f"\n\n当前会话已确认的设备编号 assetnum={asset}。"
+            "用户说「这台/该设备」时优先用它，不要再猜测编号。"
+        )
+    return [SystemMessage(content=prompt)]
 
 
 def build_graph(*, llm: BaseChatModel, checkpointer=None, tools=None):
@@ -97,7 +122,7 @@ def build_graph(*, llm: BaseChatModel, checkpointer=None, tools=None):
     def model_node(state: AgentState) -> dict[str, Any]:
         rounds = int(state.get("tool_rounds") or 0)
         messages = list(state.get("messages") or [])
-        prompt_messages = [SystemMessage(content=SYSTEM_PROMPT), *messages]
+        prompt_messages = [*_system_messages(state), *messages]
         runnable = llm if rounds >= MAX_TOOL_ROUNDS else llm.bind_tools(bound_tools)
         try:
             response = runnable.invoke(prompt_messages)
@@ -172,18 +197,25 @@ def invoke_main_agent(
     graph=None,
 ) -> dict[str, Any]:
     compiled = graph or get_compiled_graph()
+    payload: dict[str, Any] = {
+        "messages": [HumanMessage(content=query)],
+        "tool_rounds": 0,
+    }
+    if last_assetnum:
+        payload["last_assetnum"] = last_assetnum
     with thread_context(session_id):
         try:
             result = compiled.invoke(
-                {
-                    "messages": [HumanMessage(content=query)],
-                    "last_assetnum": last_assetnum,
-                    "tool_rounds": 0,
-                },
+                payload,
                 config={
                     "configurable": {"thread_id": session_id},
                     "recursion_limit": 24,
-                    "metadata": {"session_id": session_id},
+                    "run_name": "afvc-main-agent",
+                    "metadata": {
+                        "session_id": session_id,
+                        "thread_id": session_id,
+                        "model": get_openai_model(),
+                    },
                     "tags": ["afvc", "main-agent"],
                 },
             )

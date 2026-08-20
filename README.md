@@ -26,7 +26,7 @@
 
 ## 技术栈
 
-Python 3.12 · FastAPI · Streamlit · Polars · PostgreSQL · LangGraph · 可选智谱 GLM（OpenAI 兼容）
+Python 3.12 · FastAPI · Streamlit · Polars · PostgreSQL · LangGraph · OpenAI-compatible LLM（当前验收：DeepSeek）
 
 工单工作集在 Postgres `business.workorders`。Excel/CSV 经 `POST /upload/workorders` 或 `scripts/import_default_xlsx.py` 导入。模型结果仍读 `backend/data/mock/`（目录名历史遗留，见该目录 README）。紧急回退：`AFVC_DATA_BACKEND=file`。
 
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-编辑 `.env`：填智谱 API Key；对话主 Agent 设 `AFVC_USE_LLM=true`（并保持 `AFVC_AGENT_GRAPH=true`）。配置只从 `backend/core/config.py` 读取。
+编辑 `.env`：填 OpenAI 兼容 API Key（DeepSeek 或智谱等）；对话主 Agent 设 `AFVC_USE_LLM=true`（并保持 `AFVC_AGENT_GRAPH=true`）。配置只从 `backend/core/config.py` 读取。
 
 ## 启动
 
@@ -83,7 +83,13 @@ python scripts/check_text_integrity.py
 python -m ruff check backend frontend tests scripts
 ```
 
-默认 `AFVC_USE_LLM=false`，不打真实模型。
+默认 `AFVC_USE_LLM=false`，不打真实模型。真实 Agent 验收 / eval：
+
+```bash
+pytest -m llm
+```
+
+需要 `.env` 里有效的 `OPENAI_API_KEY` 和可用的 Postgres。当前验收 provider 为 DeepSeek。若同时配置了 `LANGSMITH_API_KEY`，测试会打开 tracing，并用 `session_id` / case id 前缀方便在 LangSmith 里定位。
 
 ## 目录
 

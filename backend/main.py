@@ -5,19 +5,13 @@
 """
 
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.core.config import (
-    PROJECT_NAME,
-    PROJECT_VERSION,
-    LANGSMITH_TRACING,
-    LANGSMITH_API_KEY,
-    LANGSMITH_PROJECT,
-)
+from backend.core.config import PROJECT_NAME, PROJECT_VERSION
+from backend.core.tracing import configure_langsmith
 
 # ── 日志 ──────────────────────────────────────────────────────
 
@@ -30,10 +24,8 @@ logger = logging.getLogger("afvc")
 
 # ── LangSmith 初始化 ──────────────────────────────────────────
 
-if LANGSMITH_TRACING.lower() == "true" and LANGSMITH_API_KEY:
-    os.environ["LANGSMITH_TRACING"] = "true"
-    os.environ["LANGSMITH_API_KEY"] = LANGSMITH_API_KEY
-    os.environ["LANGSMITH_PROJECT"] = LANGSMITH_PROJECT
+if configure_langsmith():
+    logger.info("LangSmith tracing enabled")
 
 
 # ── 应用生命周期 ──────────────────────────────────────────────

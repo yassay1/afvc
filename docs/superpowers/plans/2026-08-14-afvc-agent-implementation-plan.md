@@ -1,12 +1,14 @@
 # AFVC Agent Implementation Plan + Migration Map
 
+**Status (2026-08-14):** P0–P3 已在 `main` 本地提交（`5ac519b`）。V1 真实 DeepSeek + LangSmith 验收曾 6/6 通过。当前工作区另有**未提交**稳定化改动：eval cases、tracing、`tool_trace` 按轮次统计、tool 错误不崩图、DeepSeek 文档对齐。下一阶段：**稳定化 / eval 复跑**，不再扩架构。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在不重写业务算法的前提下，把 AFVC 从「文件库 + 规则 Interaction」迁到「Postgres 行级业务数据 + LangGraph 主图 Agent」。写操作人批（P3）为：Agent 提案 → `pending_actions` → 当前 run 正常结束 → 显式 approve/reject API → DB 写入；**不是**会话 thread 暂停/恢复式 HITL。
 
 **Architecture:** Application 继续实现 Data / Prediction / 建议手册；主图只编排。对话 thread 与写操作审批解耦：会话可继续，写操作只能走显式 approve API。`understand.py` 退出 LLM 主路径，仅作 LLM 关闭/失败兜底。
 
-**Tech Stack:** Python 3.12 · FastAPI · Streamlit · Polars · Postgres · LangGraph + PostgresSaver · 智谱 GLM（OpenAI 兼容）· LangSmith tracing（开关）· pytest
+**Tech Stack:** Python 3.12 · FastAPI · Streamlit · Polars · Postgres · LangGraph + PostgresSaver · OpenAI-compatible LLM（V1 验收：DeepSeek）· LangSmith tracing（开关）· pytest
 
 **Spec:** `docs/superpowers/specs/2026-08-14-afvc-agent-architecture-design.md`  
 **本轮拍板：** 1c（无 semantic gate）· 2b（行级 CRUD）· 3a（无登录，但不写死单用户）· HITL = 提案单据 + 显式 API（见 §0 / §7；禁止用会话 thread 的 `interrupt()` / `Command(resume)` 等人批）

@@ -110,6 +110,61 @@ def test_main_graph_multi_tool_trace_without_understand(monkeypatch):
     assert "风险" in out["final_answer"]
 
 
+def test_missing_device_history_returns_tool_error_not_crash():
+    llm = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "get_device_history",
+                        "args": {"assetnum": "NO-SUCH-DEVICE", "limit": 5},
+                        "id": "call_hist_missing",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="没有找到这台设备的历史工单，请确认编号或改为新增工单。"),
+        ]
+    )
+    graph = build_graph(llm=llm, checkpointer=MemorySaver())
+    out = invoke_main_agent(
+        "查一下设备 NO-SUCH-DEVICE 的历史",
+        session_id="missing-hist",
+        graph=graph,
+    )
+    assert out["source"] == "agent_graph"
+    assert "get_device_history" in out["tool_trace"]
+    assert "没有找到" in out["final_answer"]
+
+
+def test_tool_trace_covers_current_turn_only():
+    llm = ScriptedChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "get_overview",
+                        "args": {"top_n": 3},
+                        "id": "call_overview",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="当前工单工作集概览如下。"),
+            AIMessage(content="收到，这只是口头确认，不会写库。"),
+        ]
+    )
+    graph = build_graph(llm=llm, checkpointer=MemorySaver())
+    session_id = "trace-this-turn"
+    first = invoke_main_agent("给我数据概览", session_id=session_id, graph=graph)
+    assert first["tool_trace"] == ["get_overview"]
+    second = invoke_main_agent("好的，确认", session_id=session_id, graph=graph)
+    assert second["tool_trace"] == []
+    assert second["use_case"] is None
+
+
 def test_handle_turn_graph_flag_skips_understand(monkeypatch):
     understand_calls: list[str] = []
 

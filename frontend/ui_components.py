@@ -71,11 +71,11 @@ def render_page_header(
 def render_mode_card(st_module, llm_enabled: bool) -> None:
     if llm_enabled:
         title = "当前使用 LLM 模式"
-        copy = "模型能力已启用：意图仍由规则路由到用例，答复由 GLM 叙述；护栏文案保持固定。"
+        copy = "对话走 LangGraph 主 Agent：模型自主选择平台工具。写操作只生成待审批提案，需在界面批准后才会入库。"
         class_name = "afc-mode-card afc-mode-card--enabled"
     else:
         title = "当前使用规则兜底模式"
-        copy = "LLM 调用尚未启用，系统将通过内置规则完成意图识别与用例路由。设置 AFVC_USE_LLM=true 后可启用模型能力。"
+        copy = "LLM 尚未启用，对话走 understand 规则兜底。设置 AFVC_USE_LLM=true 后启用主 Agent。"
         class_name = "afc-mode-card"
     st_module.markdown(
         f'<div class="{class_name}" role="status"><span class="afc-mode-indicator"></span><div><div class="afc-mode-title">{title}</div><div class="afc-mode-copy">{copy}</div></div></div>',

@@ -59,6 +59,8 @@ def test_frontend_bootstraps_project_root_before_backend_import():
 def test_llm_mode_uses_existing_backend_configuration():
     assert "from backend.core.config import is_llm_enabled" in APP_SOURCE
     assert "AFVC_USE_LLM=true" in UI_SOURCE
+    assert "意图仍由规则路由" not in UI_SOURCE
+    assert "LangGraph 主 Agent" in UI_SOURCE
 
 
 def test_official_streamlit_chat_without_legacy_agent_debug():

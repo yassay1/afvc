@@ -9,9 +9,9 @@ load_dotenv()
 OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL: str = os.getenv(
     "OPENAI_BASE_URL",
-    "https://open.bigmodel.cn/api/paas/v4/",
+    "https://api.deepseek.com",
 )
-OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "glm-4-flash")
+OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "deepseek-chat")
 OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "15"))
 OPENAI_MAX_RETRIES: int = int(os.getenv("OPENAI_MAX_RETRIES", "1"))
 AFVC_USE_LLM: str = os.getenv("AFVC_USE_LLM", "false")
@@ -57,3 +57,20 @@ def is_sql_backend() -> bool:
     """Postgres is the workorder source of truth unless emergency file fallback is set."""
     backend = os.getenv("AFVC_DATA_BACKEND", AFVC_DATA_BACKEND).strip().lower()
     return backend not in {"file", "excel", "raw"}
+
+
+def get_openai_model() -> str:
+    """Runtime chat model name (OpenAI-compatible provider)."""
+    return os.getenv("OPENAI_MODEL", OPENAI_MODEL).strip() or OPENAI_MODEL
+
+
+def has_usable_llm_key() -> bool:
+    """True when OPENAI_API_KEY looks like a real provider key, not the example placeholder."""
+    key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY).strip()
+    return bool(key) and "YOUR" not in key.upper()
+
+
+def has_usable_langsmith_key() -> bool:
+    """True when LANGSMITH_API_KEY looks real, not the example placeholder."""
+    key = os.getenv("LANGSMITH_API_KEY", LANGSMITH_API_KEY).strip()
+    return bool(key) and "your-langsmith" not in key.lower()

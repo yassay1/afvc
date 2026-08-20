@@ -100,7 +100,7 @@ README.md
 ## 5. Agent 主路径
 
 ```
-START → model（GLM + 封闭 Tool）
+START → model（LLM + 封闭 Tool）
           ├─ 无 tool call → END
           └─ tools → model → …（最多 8 轮）→ END
 ```
@@ -112,6 +112,7 @@ START → model（GLM + 封闭 Tool）
 - safe / sensitive 分类的唯一来源是 `application/capabilities.py`。
 - 写工具只调用 `approvals.propose_write`；真正写入只发生在 `approvals.approve`（`FOR UPDATE` + 同一事务业务写 + `pending → executed`）。
 - 口语「好的 / 确认」不会走 approve API。
+- `LANGSMITH_TRACING=true` 时自动上报 traces；`thread_id` = `session_id`。
 - 回滚对话主路径：`AFVC_AGENT_GRAPH=false` 或 `AFVC_USE_LLM=false` → understand 兜底。模型供应商不可用 → 可观测降级。图/DB/程序错误 → 500，不降级。
 
 ## 5.1 HITL 状态机

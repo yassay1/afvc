@@ -16,7 +16,7 @@ pytest
 
 | 工具 | 状态 |
 |------|------|
-| pytest | 主测试。默认跳过 `llm` / `slow` marker |
+| pytest | 主测试。默认跳过 `llm` / `slow` marker。`pytest -m llm` 跑真实 Agent eval（当前验收：DeepSeek） |
 | `scripts/check_text_integrity.py` | 乱码 / 私用区字符 |
 | compileall | 语法 |
 | Ruff | `pyproject.toml` 中仅启用未使用符号检查；不强制全量 format |
