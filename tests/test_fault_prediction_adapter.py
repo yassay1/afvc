@@ -1,10 +1,12 @@
-"""故障类型预测结果表单元测试。"""
+"""故障类型预测结果表单元测试（合成 DEMO 设备，不含真实资产编号）。"""
 
 from backend.infrastructure.fault_table import (
     has_fault_prediction_file,
     get_fault_type_scores,
     load_fault_prediction_table,
 )
+
+DEMO_ASSETNUM = "DEMO-AGM-001"
 
 
 class TestFaultPredictionFile:
@@ -27,10 +29,9 @@ class TestGetFaultTypeScores:
     """get_fault_type_scores 函数测试。"""
 
     def test_known_device_window_30(self):
-        """已知设备在窗口 30 应有预测结果。"""
-        scores = get_fault_type_scores("1000029970", 30)
+        """已知 DEMO 设备在窗口 30 应有预测结果。"""
+        scores = get_fault_type_scores(DEMO_ASSETNUM, 30)
         assert len(scores) > 0
-        # 验证排序
         probs = [s["conditional_probability"] for s in scores]
         assert probs == sorted(probs, reverse=True)
 
@@ -41,44 +42,43 @@ class TestGetFaultTypeScores:
 
     def test_different_windows(self):
         """不同窗口应返回不同结果。"""
-        scores_30 = get_fault_type_scores("1000029970", 30)
-        scores_90 = get_fault_type_scores("1000029970", 90)
+        scores_30 = get_fault_type_scores(DEMO_ASSETNUM, 30)
+        scores_90 = get_fault_type_scores(DEMO_ASSETNUM, 90)
         assert len(scores_30) > 0
         assert len(scores_90) > 0
-        # 90 天可能有更多类别
         assert len(scores_90) >= 2
 
     def test_fault_codes_are_valid(self):
         """所有返回的 fault_code 应为合法枚举。"""
-        scores = get_fault_type_scores("1000029970", 30)
+        scores = get_fault_type_scores(DEMO_ASSETNUM, 30)
         from backend.domain.fault import is_valid_fault_code
         for s in scores:
             assert is_valid_fault_code(s["fault_code"])
 
     def test_probabilities_in_range(self):
         """条件概率应在 [0, 1] 内。"""
-        scores = get_fault_type_scores("EX011115", 30)
+        scores = get_fault_type_scores(DEMO_ASSETNUM, 30)
         for s in scores:
             assert 0.0 <= s["conditional_probability"] <= 1.0
 
     def test_fault_names_match_code(self):
         """fault_name 应与 fault_code 定义一致。"""
         from backend.domain.fault import FAULT_CODE_TO_NAME
-        scores = get_fault_type_scores("1000029970", 30)
+        scores = get_fault_type_scores(DEMO_ASSETNUM, 30)
         for s in scores:
             assert s["fault_name"] == FAULT_CODE_TO_NAME.get(s["fault_code"], "")
 
-    def test_ex011115_system_top(self):
-        """EX011115 在窗口 30 应以 SYSTEM 为首。"""
-        scores = get_fault_type_scores("EX011115", 30)
+    def test_ticket_card_top_for_demo(self):
+        """DEMO 设备窗口 30 应以 TICKET_CARD 为首。"""
+        scores = get_fault_type_scores(DEMO_ASSETNUM, 30)
         assert len(scores) > 0
-        assert scores[0]["fault_code"] == "SYSTEM"
+        assert scores[0]["fault_code"] == "TICKET_CARD"
 
     def test_conditional_probability_sorted(self):
         """所有结果应按条件概率降序排列。"""
-        for device in ["1000029970", "EX011115"]:
-            for window in [7, 30, 90]:
-                scores = get_fault_type_scores(device, window)
-                probs = [s["conditional_probability"] for s in scores]
-                assert probs == sorted(probs, reverse=True), \
-                    f"未正确排序: device={device}, window={window}, probs={probs}"
+        for window in [7, 30, 90]:
+            scores = get_fault_type_scores(DEMO_ASSETNUM, window)
+            probs = [s["conditional_probability"] for s in scores]
+            assert probs == sorted(probs, reverse=True), (
+                f"未正确排序: window={window}, probs={probs}"
+            )

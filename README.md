@@ -28,7 +28,9 @@
 
 Python 3.12 · FastAPI · Streamlit · Polars · PostgreSQL · LangGraph · OpenAI-compatible LLM（当前验收：DeepSeek）
 
-工单工作集在 Postgres `business.workorders`。Excel/CSV 经 `POST /upload/workorders` 或 `scripts/import_default_xlsx.py` 导入。模型结果仍读 `backend/data/mock/`（目录名历史遗留，见该目录 README）。紧急回退：`AFVC_DATA_BACKEND=file`。
+工单工作集在 Postgres `business.workorders`。Excel/CSV 经 `POST /upload/workorders` 或 `scripts/import_default_xlsx.py` 导入。
+
+**真实工单 / 线路报告不要提交到 Git**（已 gitignore）。本地把 xlsx 放到 `backend/data/raw/` 即可。仓库内 `backend/data/mock/` 仅为合成 DEMO 预测样例。紧急回退：`AFVC_DATA_BACKEND=file`。
 
 ## 安装与配置
 

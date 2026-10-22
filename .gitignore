@@ -11,10 +11,14 @@ build/
 .vscode/
 *.swp
 *.swo
-backend/data/raw/*.xlsx
-backend/data/raw/*.xls
-backend/data/raw/*.csv
-!backend/data/raw/afc非首次故障-L01线.xlsx
 .streamlit/
 .DS_Store
 Thumbs.db
+
+# Real operational work-order / report files — keep local only, never commit
+backend/data/raw/*
+!backend/data/raw/.gitkeep
+*.xlsx
+*.xls
+地铁*.pdf
+afc*.xlsx

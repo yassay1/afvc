@@ -66,26 +66,21 @@ class TestDataService:
         assert "time_range" in summary
         assert "brand_distribution" in summary
 
-    def test_default_file_exists(self):
-        """默认数据文件应存在于 backend/data/raw/ 目录。"""
-        default_file = RAW_DATA_DIR / "afc非首次故障-L01线.xlsx"
-        assert default_file.exists(), (
-            f"默认数据文件不存在于 {default_file}。"
-            f"请将 afc非首次故障-L01线.xlsx 放置到 {RAW_DATA_DIR} 目录下。"
-        )
-
-    def test_default_file_readable(self):
-        """默认数据文件应可成功读取。"""
+    def test_default_file_readable_if_present(self):
+        """若本地放了默认工单文件，应可成功读取（文件不进 Git）。"""
         default_file = RAW_DATA_DIR / "afc非首次故障-L01线.xlsx"
         if not default_file.exists():
-            pytest.skip("默认数据文件不存在，跳过读取测试")
+            pytest.skip("本地未放置默认工单 xlsx，跳过")
         df = read_workorder_file(default_file)
         assert df.height > 0
         assert "assetnum" in df.columns
 
     def test_get_latest_raw_file_finds_default(self):
-        """没有用户上传文件时，应自动使用默认文件。"""
-        file = get_latest_raw_file()
+        """没有用户上传文件时，应自动使用默认文件（需本地 raw 数据）。"""
+        try:
+            file = get_latest_raw_file()
+        except FileNotFoundError:
+            pytest.skip("backend/data/raw 无工单文件，跳过")
         assert file.exists()
         assert file.suffix in [".xlsx", ".xls", ".csv"]
 
