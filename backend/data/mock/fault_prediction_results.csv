@@ -1,0 +1,13 @@
+assetnum,window_days,fault_code,fault_name,conditional_probability,model_version
+DEMO-AGM-001,7,TICKET_CARD,票卡处理异常,0.50,fault-type-demo-v1
+DEMO-AGM-001,7,COMMUNICATION,通信异常,0.30,fault-type-demo-v1
+DEMO-AGM-001,7,GATE_CONTROL,通行控制或扇门异常,0.20,fault-type-demo-v1
+DEMO-AGM-001,30,TICKET_CARD,票卡处理异常,0.45,fault-type-demo-v1
+DEMO-AGM-001,30,COMMUNICATION,通信异常,0.35,fault-type-demo-v1
+DEMO-AGM-001,30,GATE_CONTROL,通行控制或扇门异常,0.20,fault-type-demo-v1
+DEMO-AGM-001,90,TICKET_CARD,票卡处理异常,0.42,fault-type-demo-v1
+DEMO-AGM-001,90,COMMUNICATION,通信异常,0.33,fault-type-demo-v1
+DEMO-AGM-001,90,GATE_CONTROL,通行控制或扇门异常,0.25,fault-type-demo-v1
+DEMO-AGM-002,30,TICKET_CARD,票卡处理异常,0.40,fault-type-demo-v1
+DEMO-AGM-002,30,GATE_CONTROL,通行控制或扇门异常,0.35,fault-type-demo-v1
+DEMO-AGM-002,30,COMMUNICATION,通信异常,0.25,fault-type-demo-v1
