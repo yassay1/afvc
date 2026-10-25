@@ -1,0 +1,5 @@
+part_code,part_name,stock_qty,related_fault,note
+SP-DOOR,扇门驱动组件,3,暂停服务,模拟库存
+SP-PSU,电源模块,1,暂停服务,模拟库存
+SP-TICKET,票卡回收模块,0,卡票,模拟库存-缺货
+SP-SENSOR,通行传感器,5,暂停服务,模拟库存

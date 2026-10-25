@@ -29,9 +29,21 @@ from backend.application.advice import advise_maintenance
 from backend.application.diagnose import diagnose_device
 from backend.infrastructure import risk_table
 
-# ── 测试常量（基于真实数据中的设备） ──
-KNOWN_ASSETNUM = "1000029970"   # 花地湾站，163 条工单
 UNKNOWN_ASSETNUM = "ZZZ99999"   # 不存在的设备
+
+
+def _known_assetnum() -> str:
+    """Prefer DEMO ids when present; else first device in the current working set."""
+    from backend.application.history import get_device_list
+
+    devices = get_device_list()["devices"]
+    if not devices:
+        pytest.skip("当前工单工作集为空")
+    for row in devices:
+        asset = str(row.get("assetnum") or "")
+        if asset.startswith("DEMO-"):
+            return asset
+    return str(devices[0]["assetnum"])
 
 
 class TestDataService:
@@ -99,7 +111,7 @@ class TestDeviceService:
 
     def test_get_device_history_known(self):
         """应能查询已知设备的历史工单。"""
-        result = get_device_history(KNOWN_ASSETNUM, limit=10)
+        result = get_device_history(_known_assetnum(), limit=10)
         assert result["status"] == "success"
         assert result["history_count"] > 0
         assert result["history_count"] <= 10
@@ -114,7 +126,7 @@ class TestPredictionService:
 
     def test_predict_device_risk_known(self):
         """已知设备应返回 6 个时间窗口风险值。"""
-        result = predict_device_risk(KNOWN_ASSETNUM)
+        result = predict_device_risk(_known_assetnum())
         assert result["status"] == "success"
         for window in ["risk_7d", "risk_14d", "risk_21d", "risk_30d", "risk_60d", "risk_90d"]:
             val = result[window]
@@ -127,7 +139,7 @@ class TestPredictionService:
 
     def test_predict_returns_warning_level(self):
         """预测结果应包含预警等级。"""
-        result = predict_device_risk(KNOWN_ASSETNUM)
+        result = predict_device_risk(_known_assetnum())
         assert "warning_level" in result
         assert result["warning_level"] in ["红色预警", "橙色预警", "黄色预警", "绿色关注"]
 
@@ -202,7 +214,7 @@ class TestAdviceService:
 
     def test_generate_advice_known(self):
         """已知设备应返回维修建议。"""
-        result = advise_maintenance(KNOWN_ASSETNUM)
+        result = advise_maintenance(_known_assetnum())
         assert result["status"] == "success"
         assert "recognized_fault_phenomena" in result
         assert "possible_causes" in result
@@ -219,7 +231,7 @@ class TestAnalysisService:
 
     def test_generate_analysis_known(self):
         """已知设备应返回完整综合分析。"""
-        result = diagnose_device(KNOWN_ASSETNUM, history_limit=20)
+        result = diagnose_device(_known_assetnum(), history_limit=20)
         assert result["status"] == "success"
         assert "device_profile" in result
         assert "history_summary" in result
@@ -229,7 +241,7 @@ class TestAnalysisService:
 
     def test_analysis_profile_has_required_fields(self):
         """设备 profile 应包含必要字段。"""
-        result = diagnose_device(KNOWN_ASSETNUM)
+        result = diagnose_device(_known_assetnum())
         profile = result["device_profile"]
         assert "assetnum" in profile
         assert "station_name" in profile

@@ -25,7 +25,17 @@ def test_styles_define_responsive_container_and_accessibility_states():
 
 
 def test_navigation_pages_and_chat_state_keys_are_preserved():
-    for label in ("首页概览", "数据上传", "数据概览", "高风险设备", "设备分析", "对话工作台"):
+    for label in (
+        "首页概览",
+        "今日检修建议",
+        "检修计划",
+        "执行反馈",
+        "数据上传",
+        "数据概览",
+        "高风险设备",
+        "设备分析",
+        "对话工作台",
+    ):
         assert label in APP_SOURCE
     for key in ("agent_session_id", "agent_messages", "agent_last_assetnum", "agent_last_use_case"):
         assert key in APP_SOURCE
@@ -39,6 +49,8 @@ def test_frontend_api_paths_target_use_case_and_interaction():
         "/upload/workorders",
         "/usecases/overview",
         "/usecases/high-risk",
+        "/usecases/maintenance/suggestions",
+        "/usecases/maintenance/tasks",
         "/usecases/devices/",
         "/diagnosis",
         "/interaction/turn",

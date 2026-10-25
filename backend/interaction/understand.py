@@ -35,6 +35,25 @@ _GLOBAL_KEYWORDS = (
     "巡检重点",
     "当前高风险",
 )
+_MAINTENANCE_SUGGESTION_KEYWORDS = (
+    "今日检修",
+    "今日建议",
+    "检修建议",
+    "检修安排",
+    "优先修",
+    "派工",
+    "今天修哪些",
+    "今天修哪",
+    "安排检修",
+    "维修作业建议",
+)
+_MAINTENANCE_TASK_KEYWORDS = (
+    "检修任务",
+    "检修计划",
+    "任务列表",
+    "计划任务",
+    "已有计划",
+)
 _UNSUPPORTED_KEYWORDS = (
     "写论文",
     "天气",
@@ -72,6 +91,8 @@ _BUSINESS_KEYWORDS = (
     "手册",
     "规程",
     "工单",
+    "派工",
+    "检修",
 )
 _EXPLANATION_KEYWORDS = (
     "一般怎么",
@@ -198,6 +219,12 @@ def understand(query: str, *, last_assetnum: str | None = None) -> Understanding
         return _result("rejected")
     if _contains_any(q, _EXPLANATION_KEYWORDS) and not _extract_assetnum(q):
         return _result("explanation")
+
+    # 维修作业只读：不依赖 assetnum；优先于「高风险/概览」全局词，避免「优先修」落到高风险榜
+    if _contains_any(q, _MAINTENANCE_SUGGESTION_KEYWORDS):
+        return _result("usecase", use_case="list_maintenance_suggestions")
+    if _contains_any(q, _MAINTENANCE_TASK_KEYWORDS):
+        return _result("usecase", use_case="list_maintenance_tasks")
 
     if _contains_any(q, _GLOBAL_KEYWORDS):
         if "高风险" in q or "优先" in q or "巡检重点" in q:

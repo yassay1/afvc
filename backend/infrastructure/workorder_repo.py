@@ -383,14 +383,18 @@ def import_from_path(
 def seed_default_if_empty() -> dict[str, Any] | None:
     if count_workorders() > 0:
         return None
-    default_path = (
-        Path(__file__).resolve().parent.parent / "data" / "raw" / DEFAULT_DATA_FILE
-    )
-    if not default_path.exists():
-        logger.warning("default workorder file missing: %s", default_path)
+    data_root = Path(__file__).resolve().parent.parent / "data"
+    default_path = data_root / "raw" / DEFAULT_DATA_FILE
+    demo_path = data_root / "mock" / "workorders_demo.csv"
+    seed_path = default_path if default_path.exists() else demo_path
+    if not seed_path.exists():
+        logger.warning(
+            "no seed workorder file (raw %s or mock demo missing)",
+            DEFAULT_DATA_FILE,
+        )
         return None
-    logger.info("seeding empty workorders table from %s", default_path.name)
-    return import_from_path(default_path, mode="replace")
+    logger.info("seeding empty workorders table from %s", seed_path.name)
+    return import_from_path(seed_path, mode="replace")
 
 
 def _ensure_manual_batch(conn, *, actor_id: str | None) -> str:

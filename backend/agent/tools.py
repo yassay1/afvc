@@ -90,8 +90,20 @@ def _predict_fault_type(assetnum: str, window_days: int = 30) -> str:
 
 
 def _advise_maintenance(assetnum: str) -> str:
-    """根据历史工单现象给出巡检/维修建议方向。需要设备编号。建议不是根因结论。"""
+    """根据历史工单现象给出巡检/维修建议方向（单设备 SOP 向）。需要设备编号。不是今日检修排序清单；建议不是根因结论。"""
     return dumps_tool_result(usecases.advise_maintenance(assetnum=assetnum))
+
+
+def _list_maintenance_suggestions(top_n: int = 10, fault_focus: str = "暂停服务") -> str:
+    """今日检修建议：服务端确定性规则排序并附 reasons。用于安排优先修哪些闸机。不要对返回列表重排或改优先级。"""
+    return dumps_tool_result(
+        usecases.list_maintenance_suggestions(top_n=top_n, fault_focus=fault_focus)
+    )
+
+
+def _list_maintenance_tasks(status: str | None = None) -> str:
+    """列出检修任务（planned / in_progress / done / cancelled）。与工单 pending_actions 不是同一条线。"""
+    return dumps_tool_result(usecases.list_maintenance_tasks(status=status))
 
 
 def _search_manual(query: str, assetnum: str | None = None) -> str:
@@ -196,6 +208,14 @@ _TOOL_BUILDERS = {
     "list_high_risk": lambda: StructuredTool.from_function(
         _domain_error_as_result(_list_high_risk), name="list_high_risk"
     ),
+    "list_maintenance_suggestions": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_list_maintenance_suggestions),
+        name="list_maintenance_suggestions",
+    ),
+    "list_maintenance_tasks": lambda: StructuredTool.from_function(
+        _domain_error_as_result(_list_maintenance_tasks),
+        name="list_maintenance_tasks",
+    ),
     "predict_device_risk": lambda: StructuredTool.from_function(
         _domain_error_as_result(_predict_device_risk), name="predict_device_risk"
     ),
@@ -239,6 +259,8 @@ TOOL_TO_USE_CASE = {
     "get_overview": "get_data_overview",
     "get_device_history": "get_device_history",
     "list_high_risk": "list_high_risk_devices",
+    "list_maintenance_suggestions": "list_maintenance_suggestions",
+    "list_maintenance_tasks": "list_maintenance_tasks",
     "predict_device_risk": "predict_device_risk",
     "predict_fault_type": "predict_fault_type",
     "advise_maintenance": "advise_maintenance",

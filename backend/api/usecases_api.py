@@ -1,6 +1,9 @@
 """用例 HTTP API —— 薄路由，只调用 application.usecases。"""
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.application import usecases
 from backend.domain.risk import SUPPORTED_PREDICTION_WINDOWS
@@ -9,6 +12,44 @@ router = APIRouter(
     prefix="/usecases",
     tags=["业务用例"],
 )
+
+
+class MaintenanceTaskCreate(BaseModel):
+    assetnum: str
+    station_name: str | None = None
+    fault_focus: str = "暂停服务"
+    priority: int = 100
+    planned_date: str | None = None
+    assignee_crew_id: str | None = None
+    status: str = "planned"
+    suggestion_score: float | None = None
+    suggestion_reasons: list[str] = Field(default_factory=list)
+    reasons: list[str] | None = None
+
+
+class MaintenanceTaskPatch(BaseModel):
+    priority: int | None = None
+    planned_date: str | None = None
+    assignee_crew_id: str | None = None
+    status: str | None = None
+
+
+class MaintenanceFeedbackBody(BaseModel):
+    result: str
+    matched_fault: bool | None = None
+    followed_suggestion: bool | None = None
+    note: str | None = None
+
+
+class AcceptSuggestionBody(BaseModel):
+    suggestion: dict[str, Any] | None = None
+    priority: int | None = None
+    assetnum: str | None = None
+    station_name: str | None = None
+    fault_focus: str | None = None
+    suggested_crew_id: str | None = None
+    score: float | None = None
+    reasons: list[str] | None = None
 
 
 def _http_error(exc: Exception) -> HTTPException:
@@ -31,6 +72,91 @@ def overview(top_n: int = Query(default=10, ge=1, le=30)):
 def high_risk(top_n: int = Query(default=10, ge=1, le=50)):
     try:
         return usecases.list_high_risk_devices(top_n=top_n)
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.get("/maintenance/suggestions")
+def maintenance_suggestions(
+    top_n: int = Query(default=10, ge=1, le=50),
+    fault_focus: str = Query(default="暂停服务"),
+):
+    try:
+        return usecases.list_maintenance_suggestions(
+            top_n=top_n,
+            fault_focus=fault_focus,
+        )
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.get("/maintenance/tasks")
+def maintenance_tasks_list(status: str | None = Query(default=None)):
+    try:
+        return usecases.list_maintenance_tasks(status=status)
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.post("/maintenance/tasks")
+def maintenance_tasks_create(body: MaintenanceTaskCreate):
+    try:
+        payload = body.model_dump()
+        if not payload.get("suggestion_reasons") and payload.get("reasons"):
+            payload["suggestion_reasons"] = payload["reasons"]
+        return usecases.create_maintenance_task(payload)
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.get("/maintenance/tasks/{task_id}")
+def maintenance_task_get(task_id: str):
+    try:
+        return usecases.get_maintenance_task(task_id)
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.patch("/maintenance/tasks/{task_id}")
+def maintenance_task_adjust(task_id: str, body: MaintenanceTaskPatch):
+    try:
+        return usecases.adjust_maintenance_task(
+            task_id,
+            body.model_dump(exclude_none=True),
+        )
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.post("/maintenance/tasks/{task_id}/feedback")
+def maintenance_task_feedback(task_id: str, body: MaintenanceFeedbackBody):
+    try:
+        return usecases.submit_maintenance_feedback(
+            task_id,
+            result=body.result,
+            matched_fault=body.matched_fault,
+            followed_suggestion=body.followed_suggestion,
+            note=body.note,
+        )
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.post("/maintenance/accept-suggestion")
+def maintenance_accept_suggestion(body: AcceptSuggestionBody):
+    try:
+        suggestion = body.suggestion or {
+            "assetnum": body.assetnum,
+            "station_name": body.station_name,
+            "fault_focus": body.fault_focus,
+            "suggested_crew_id": body.suggested_crew_id,
+            "score": body.score,
+            "reasons": body.reasons or [],
+        }
+        return usecases.accept_suggestion_as_task(
+            suggestion,
+            priority=body.priority,
+        )
     except Exception as e:
         raise _http_error(e) from e
 

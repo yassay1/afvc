@@ -22,3 +22,6 @@ backend/data/raw/*
 *.xls
 地铁*.pdf
 afc*.xlsx
+
+# Local mutable maintenance task store (file-backend fallback)
+backend/data/mock/maintenance_tasks.json

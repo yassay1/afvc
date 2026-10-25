@@ -12,6 +12,8 @@ from backend.core.config import is_sql_backend
 
 
 RAW_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
+MOCK_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "mock"
+DEMO_WORKORDERS_FILE = MOCK_DATA_DIR / "workorders_demo.csv"
 
 REQUIRED_COLUMNS = [
     "assetnum",
@@ -26,7 +28,7 @@ REQUIRED_COLUMNS = [
 
 
 def get_latest_raw_file() -> Path:
-    """获取 backend/data/raw/ 目录下的工单文件（import 源，不再是查询真相）。"""
+    """获取工单 import 源：优先 raw/，否则公开仓合成 DEMO CSV。"""
     DEFAULT_DATA_FILE = "afc非首次故障-L01线.xlsx"
 
     if not RAW_DATA_DIR.exists():
@@ -50,10 +52,14 @@ def get_latest_raw_file() -> Path:
     if all_files:
         return max(all_files, key=lambda file: file.stat().st_mtime)
 
+    if DEMO_WORKORDERS_FILE.exists():
+        return DEMO_WORKORDERS_FILE
+
     raise FileNotFoundError(
         f"未找到工单数据文件。请：\n"
         f"1. 通过 POST /upload/workorders 上传 AFC 工单 Excel/CSV 文件；或\n"
-        f"2. 将默认数据文件 {DEFAULT_DATA_FILE} 放置到 {RAW_DATA_DIR} 目录下。"
+        f"2. 将默认数据文件 {DEFAULT_DATA_FILE} 放置到 {RAW_DATA_DIR} 目录下；或\n"
+        f"3. 使用仓库内合成样例 {DEMO_WORKORDERS_FILE}。"
     )
 
 

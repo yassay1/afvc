@@ -1,13 +1,24 @@
 """故障类型预测用例单元测试。"""
 
+import pytest
+
 from backend.application.fault_type import (
     predict_fault_type as predict_device_fault_type,
 )
+from backend.application.history import get_device_list
 from backend.domain.risk import SUPPORTED_PREDICTION_WINDOWS
 
 
-KNOWN_ASSETNUM = "1000029970"
+# 公开仓 fault mock 仅含 DEMO-AGM-*；需与工单工作集对齐
+KNOWN_ASSETNUM = "DEMO-AGM-001"
 UNKNOWN_ASSETNUM = "ZZZ99999"
+
+
+def _require_demo_asset() -> str:
+    assets = {str(d.get("assetnum")) for d in get_device_list()["devices"]}
+    if KNOWN_ASSETNUM not in assets:
+        pytest.skip("当前工作集无 DEMO 工单；故障类型 mock 仅覆盖 DEMO-AGM-*")
+    return KNOWN_ASSETNUM
 
 
 class TestPredictDeviceFaultType:
@@ -15,9 +26,10 @@ class TestPredictDeviceFaultType:
 
     def test_success_prediction(self):
         """已知设备应返回成功预测。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         assert result["status"] == "success"
-        assert result["assetnum"] == KNOWN_ASSETNUM
+        assert result["assetnum"] == asset
         assert result["prediction_window_days"] == 30
         assert result["most_likely_fault"] is not None
         assert len(result["fault_type_predictions"]) > 0
@@ -25,13 +37,15 @@ class TestPredictDeviceFaultType:
 
     def test_overall_risk_in_range(self):
         """总体风险应在 [0, 1] 内。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         if result["status"] == "success":
             assert 0.0 <= result["overall_failure_risk"] <= 1.0
 
     def test_estimated_probability_formula(self):
         """综合估计概率 = 总体风险 × 条件概率。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         if result["status"] == "success":
             overall = result["overall_failure_risk"]
             for pred in result["fault_type_predictions"]:
@@ -45,13 +59,15 @@ class TestPredictDeviceFaultType:
 
     def test_invalid_window_error(self):
         """非法预测窗口应返回错误状态。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 999, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 999, 3)
         assert result["status"] == "error"
 
     def test_all_supported_windows(self):
         """所有支持的预测窗口应能正常调用。"""
+        asset = _require_demo_asset()
         for window in SUPPORTED_PREDICTION_WINDOWS:
-            result = predict_device_fault_type(KNOWN_ASSETNUM, window, 3)
+            result = predict_device_fault_type(asset, window, 3)
             assert result["status"] in ("success", "unavailable", "error")
             assert result["prediction_window_days"] == window
 
@@ -63,20 +79,23 @@ class TestPredictDeviceFaultType:
 
     def test_conditional_probability_normalized(self):
         """条件概率归一化后总和应接近 1.0。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         if result["status"] == "success" and len(result["fault_type_predictions"]) > 0:
             # 由于 top_k 截取，不要求总和为 1
             pass  # 只验证归一化不报错
 
     def test_top_k_limit(self):
         """top_k 应正确限制返回数量。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 2)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 2)
         if result["status"] == "success":
             assert len(result["fault_type_predictions"]) <= 2
 
     def test_most_likely_is_first(self):
         """most_likely_fault 应为 fault_type_predictions 的第一项。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         if result["status"] == "success" and result["fault_type_predictions"]:
             ml = result["most_likely_fault"]
             first = result["fault_type_predictions"][0]
@@ -84,15 +103,15 @@ class TestPredictDeviceFaultType:
 
     def test_prediction_statement_present(self):
         """结果应包含 prediction_statement。"""
-        result = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
+        asset = _require_demo_asset()
+        result = predict_device_fault_type(asset, 30, 3)
         assert "prediction_statement" in result
         assert len(result["prediction_statement"]) > 0
 
     def test_different_windows_different_risk(self):
         """不同窗口应有不同的总体风险。"""
-        # 注意：可能由于 mock 数据分布导致不同窗口风险相同，
-        # 这里只验证不报错
-        result_30 = predict_device_fault_type(KNOWN_ASSETNUM, 30, 3)
-        result_90 = predict_device_fault_type(KNOWN_ASSETNUM, 90, 3)
+        asset = _require_demo_asset()
+        result_30 = predict_device_fault_type(asset, 30, 3)
+        result_90 = predict_device_fault_type(asset, 90, 3)
         assert result_30["prediction_window_days"] == 30
         assert result_90["prediction_window_days"] == 90

@@ -1,0 +1,4 @@
+crew_id,crew_name,available,skill_tags,note
+CREW-A,甲班检修组,true,AFCAGM;暂停服务,模拟数据-非真实排班
+CREW-B,乙班检修组,true,AFCAGM;卡票,模拟数据-非真实排班
+CREW-C,丙班检修组,false,AFCAGM,模拟数据-今日不可用

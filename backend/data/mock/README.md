@@ -1,14 +1,14 @@
 # `backend/data/mock/`
 
-目录名是历史遗留，**不是** random 假业务库。
+可公开提交的**合成 DEMO**（明确标注，非真实线路运营数据）：
 
-这里只放**可公开提交的合成示例**预测结果表（CSV），供本地无真实模型输出时演示 `prediction_tier=model` 路径：
+| 文件 | 用途 |
+|------|------|
+| `workorders_demo.csv` | 无本地真实 xlsx 时的工单种子 / file 回退 |
+| `prediction_results.csv` | 复发风险模型样例（`DEMO-AGM-*`） |
+| `fault_prediction_results.csv` | 故障类型条件概率样例 |
+| `station_importance.csv` | V1 站点重要度（模拟） |
+| `crew_availability.csv` | V1 人员可用性（模拟排班） |
+| `spare_parts.csv` | V1 备件库存（模拟） |
 
-| 文件 | 用途 | 读取方 |
-|------|------|--------|
-| `prediction_results.csv` | 各设备多窗口复发风险 | `backend.infrastructure.risk_table` |
-| `fault_prediction_results.csv` | 故障类型条件概率 | `backend.infrastructure.fault_table` |
-
-真实线路的模型输出、工单 Excel **不要提交到 Git**。本地可覆盖这两个 CSV，或把工单放到 `backend/data/raw/`（已 gitignore）后走 statistical baseline。
-
-有表则 `prediction_tier=model`；没有风险表时，`application/risk.py` 使用工单频次/间隔的 **statistical baseline**。
+真实工单 / 真实模型输出 **不要提交到 Git**。本地可将 xlsx 放到 `backend/data/raw/`。

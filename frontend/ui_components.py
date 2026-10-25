@@ -7,6 +7,8 @@ from typing import Any
 USE_CASE_LABELS = {
     "get_data_overview": "数据概览",
     "list_high_risk_devices": "高风险设备",
+    "list_maintenance_suggestions": "今日检修建议",
+    "list_maintenance_tasks": "检修计划",
     "get_device_history": "设备历史",
     "predict_device_risk": "设备风险预测",
     "advise_maintenance": "维护建议",
@@ -28,9 +30,9 @@ def render_sidebar_brand(st_module) -> None:
     st_module.markdown(
         """
         <div class="afc-brand">
-          <div class="afc-brand-mark">AFC</div>
-          <div class="afc-brand-title">AFC 智能运维</div>
-          <div class="afc-brand-subtitle">Fault Prediction Platform</div>
+          <div class="afc-brand-mark">AFVC</div>
+          <div class="afc-brand-title">检修安排闭环</div>
+          <div class="afc-brand-subtitle">Prediction → Plan → Feedback</div>
         </div>
         """,
         unsafe_allow_html=True,

@@ -61,6 +61,10 @@ def _invoke_usecase(
         return usecases.get_data_overview()
     if use_case == "list_high_risk_devices":
         return usecases.list_high_risk_devices()
+    if use_case == "list_maintenance_suggestions":
+        return usecases.list_maintenance_suggestions()
+    if use_case == "list_maintenance_tasks":
+        return usecases.list_maintenance_tasks()
     if use_case == "get_device_history":
         return usecases.get_device_history(assetnum=assetnum or "")
     if use_case == "predict_device_risk":

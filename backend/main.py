@@ -1,4 +1,4 @@
-"""AFVC 诊断能力平台 —— FastAPI 入口。
+"""AFVC 检修安排闭环 —— FastAPI 入口。
 
 启动方式：
     python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
@@ -61,8 +61,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=PROJECT_NAME,
     description=(
-        "面向地铁 AFC 闸机维修工单数据的诊断能力平台。"
-        "通过 /usecases/* 暴露业务用例；/interaction/turn 在 LLM+Graph 开启时走 LangGraph 主 Agent。"
+        "预测驱动的 AFC 闸机检修安排闭环："
+        "今日建议、可调整检修计划、执行反馈。"
+        "/usecases/maintenance/* 为主路径；/interaction/* 为对话旁路。"
     ),
     version=PROJECT_VERSION,
     lifespan=lifespan,

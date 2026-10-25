@@ -348,17 +348,19 @@ def list_high_risk_devices(top_n: int = 10) -> dict[str, Any]:
                 ],
             })
 
-        return {
-            "status": "success",
-            "message": "高风险设备 Top N 生成成功",
-            "top_n": top_n,
-            "devices": risk_records,
-            "prediction_source": "external_prediction_csv",
-            "prediction_tier": "model",
-            "model_note": "当前高风险设备清单来自外部预测模型输出的 prediction_results.csv 文件。",
-        }
+        if risk_records:
+            return {
+                "status": "success",
+                "message": "高风险设备 Top N 生成成功",
+                "top_n": top_n,
+                "devices": risk_records,
+                "prediction_source": "external_prediction_csv",
+                "prediction_tier": "model",
+                "model_note": "当前高风险设备清单来自外部预测模型输出的 prediction_results.csv 文件。",
+            }
+        # 预测表存在但与当前工单 assetnum 无交集时，回退统计基线
 
-    # 2. 没有外部预测结果表时，回退到统计基线
+    # 2. 没有可用的外部模型清单时，回退到统计基线
     assetnums = (
         df
         .select(

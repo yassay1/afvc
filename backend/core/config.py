@@ -26,8 +26,8 @@ LANGSMITH_TRACING: str = os.getenv("LANGSMITH_TRACING", "false")
 LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
 LANGSMITH_PROJECT: str = os.getenv("LANGSMITH_PROJECT", "afvc")
 
-PROJECT_NAME: str = "AFVC 诊断能力平台"
-PROJECT_VERSION: str = "0.3.0"
+PROJECT_NAME: str = "AFVC 检修安排闭环"
+PROJECT_VERSION: str = "0.4.0"
 
 
 def _flag(value: str) -> bool:
