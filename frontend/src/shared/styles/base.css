@@ -89,7 +89,7 @@ a { color: inherit; }
 .risk-label.warning-level--green, .maintenance-warning.warning-level--green, .device-list__warning.warning-level--green, .device-detail__warning.warning-level--green, .risk-level.warning-level--green { background: #d1fae5; color: #065f46; }
 .risk-label.warning-level--neutral, .maintenance-warning.warning-level--neutral, .device-list__warning.warning-level--neutral, .device-detail__warning.warning-level--neutral, .risk-level.warning-level--neutral { background: #eef2f6; color: #475569; }
 .app-main { width: min(100%, var(--content-width)); margin: 0 auto; padding: 28px 20px calc(var(--nav-height) + 44px + env(safe-area-inset-bottom)); }
-.app-shell--workbench .app-main { padding-top: 16px; padding-bottom: 18px; }
+.app-shell--workbench .app-main { padding-top: 16px; padding-bottom: calc(var(--nav-height) + 24px + env(safe-area-inset-bottom)); }
 .app-shell--maintenance .app-main { padding-top: 16px; padding-bottom: 18px; }
 .app-shell--devices .app-main { padding-top: 16px; padding-bottom: 18px; }
 .app-shell--assistant .app-main {
@@ -111,7 +111,8 @@ a { color: inherit; }
 @media (max-width: 420px) {
   .app-header__inner { padding-inline: 16px; }
   .app-main { padding: 20px 16px calc(var(--nav-height) + 36px + env(safe-area-inset-bottom)); }
-  .app-shell--workbench .app-main, .app-shell--maintenance .app-main, .app-shell--devices .app-main { padding-top: 16px; padding-bottom: 18px; }
+  .app-shell--workbench .app-main { padding-top: 16px; padding-bottom: calc(var(--nav-height) + 24px + env(safe-area-inset-bottom)); }
+  .app-shell--maintenance .app-main, .app-shell--devices .app-main { padding-top: 16px; padding-bottom: 18px; }
   .app-shell--assistant .app-main { padding-bottom: calc(var(--nav-height) + 124px + env(safe-area-inset-bottom)); }
   .placeholder { padding: 22px 20px; }
 }

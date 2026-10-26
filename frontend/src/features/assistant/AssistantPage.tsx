@@ -231,9 +231,9 @@ export function AssistantPage() {
       </div>
     </header>
     {isEmpty && (
-      <div className="assistant-hero">
+      <div className="assistant-welcome">
         <h2>有什么可以帮您？</h2>
-        <p>分析设备风险、给出检修建议，也能帮你查历史与手册。</p>
+        <p>分析设备风险，查询检修建议、历史与手册。</p>
       </div>
     )}
     {assetnum && <div className="assistant-context">当前设备：<Link to={`/devices/${encodeURIComponent(assetnum)}`}><DeviceIdentity assetnum={assetnum} dataProfile={profile.data?.data_profile} /></Link></div>}

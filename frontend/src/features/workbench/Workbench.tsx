@@ -116,12 +116,11 @@ function AssistantHero() {
     openQuestion(question)
   }
 
-  return <section className="assistant-hero" aria-labelledby="assistant-hero-title">
-    <Link className="assistant-hero__heading" to="/assistant"><Sparkles size={19} aria-hidden="true" /><strong id="assistant-hero-title">AI 助手</strong><ChevronRight size={18} aria-hidden="true" /></Link>
-    <div className="assistant-hero__orb" aria-hidden="true" />
-    <p className="assistant-hero__statement">随时提问，快速获取<br />专业的检修建议。</p>
-    <div className="assistant-hero__questions" aria-label="快捷提问">{quickQuestions.map((item) => <button key={item} type="button" onClick={() => openQuestion(item)}>{item}</button>)}</div>
-    <form className="assistant-hero__form" onSubmit={submit}>
+  return <section className="workbench-assistant" aria-labelledby="workbench-assistant-title">
+    <Link className="workbench-assistant__heading" to="/assistant"><Sparkles size={19} aria-hidden="true" /><strong id="workbench-assistant-title">AI 助手</strong><ChevronRight size={18} aria-hidden="true" /></Link>
+    <p className="workbench-assistant__statement">快速查询设备风险与检修建议</p>
+    <div className="workbench-assistant__questions" aria-label="快捷提问">{quickQuestions.map((item) => <button key={item} type="button" onClick={() => openQuestion(item)}>{item}</button>)}</div>
+    <form className="workbench-assistant__form" onSubmit={submit}>
       <MessageCircle size={20} aria-hidden="true" />
       <label className="visually-hidden" htmlFor="workbench-question">向 AI 助手提问</label>
       <input id="workbench-question" value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={500} placeholder="输入设备编号、问题或指令…" />
