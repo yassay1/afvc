@@ -16,7 +16,7 @@
 | 模拟资源 | `station_importance` / `crew_availability` / `spare_parts` CSV | **明确为模拟**，非真实排班/库存系统 |
 | 手册 | `backend/data/knowledge/manuals/` | 样例 Markdown |
 
-紧急回退：`AFVC_DATA_BACKEND=file` 时工单读最新 raw/DEMO 文件，不经 Postgres。
+`AFVC_DATA_PROFILE=demo` 时仅允许 SQL 后端，连接本机 `127.0.0.1:55433/afvc_demo`，并只加载本仓 `backend/data/mock/` 的合成数据。`AFVC_DATA_PROFILE=production` 才保留原有的 raw 优先种子和紧急 file 回退。
 
 Schema 迁移：`scripts/sql/001_*.sql`、`002_*.sql`、`003_maintenance_tasks.sql`。
 
@@ -32,7 +32,9 @@ Schema 迁移：`scripts/sql/001_*.sql`、`002_*.sql`、`003_maintenance_tasks.s
 
 **限制：** DEMO 与模拟资源仅用于跑通链路与联调，**不得**当作真实线网运营结论或降本减故证据。
 
-空库种子顺序：优先 `raw` 默认真实文件名（若存在）→ 否则 `workorders_demo.csv`。
+demo 首次初始化在一个事务中种入 288 条工单与 18 条检修任务（planned / in_progress / done；done 带合成反馈），并写入 v1 版本标记。重启只检查标记，不重插也不覆盖任务。若发现无标记的非空库、版本不符、文件缺失或跨表引用不齐，启动失败，不回退至 raw 或统计基线。production 空库只从 raw 默认文件种入；缺失时明确失败，避免将合成数据标为 production。
+
+`backend/data/mock/` 中的固定 CSV 与 `maintenance_tasks_demo.json` 由 `scripts/generate_demo_data.py` 生成。设备、风险、故障类型、站点、班组和任务使用同一组虚构键。根目录 `docker-compose.yml` 是唯一的本地 Compose 入口，固定使用 `afvc-demo` 项目、端口 55433 和 `afvc_demo_pgdata` volume。普通 `docker compose up -d` 不重置数据；需要明确重置时，先停 demo 后端，再执行 `docker compose down --volumes` 后 `docker compose up -d`。该清理只会移除当前 demo Compose 项目的数据卷。
 
 ## 3. 对齐键与约定
 
@@ -54,7 +56,7 @@ Schema 迁移：`scripts/sql/001_*.sql`、`002_*.sql`、`003_maintenance_tasks.s
 | 身份 | `id`，`assetnum`，可选 `station_name` |
 | 计划 | `priority`（越小越优先）、`planned_date`、`assignee_crew_id`、`status` |
 | 建议溯源 | `suggestion_score`，`suggestion_reasons` |
-| 反馈 | `feedback_*`，完成后常将 `status` 置 `done` |
+| 反馈 | `feedback_*`；通过反馈接口记录非空现场结果后，任务才转为 `done` |
 
 与 `agent.pending_actions`（工单对话审批）分离。
 

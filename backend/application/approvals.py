@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from backend.application.capabilities import is_sensitive
-from backend.core.config import is_sql_backend
+from backend.core.config import get_data_profile, is_sql_backend
 from backend.domain.pending_action import (
     EXECUTED,
     PENDING,
@@ -58,6 +58,8 @@ def _summary_for(tool_name: str, payload: dict[str, Any]) -> str:
 
 
 def _resolve_import_path(source_filename: str) -> Path:
+    if get_data_profile() == "demo":
+        raise RuntimeError("demo 模式禁止从 raw 目录导入工单")
     name = Path(source_filename).name
     if name != source_filename:
         raise ValueError("source_filename 只能是 raw 目录下的文件名")

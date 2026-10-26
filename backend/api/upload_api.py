@@ -2,14 +2,16 @@ from pathlib import Path
 from datetime import datetime
 import shutil
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 
-from backend.core.config import is_sql_backend
+from backend.api.deps import require_login
+from backend.core.config import get_data_profile, is_sql_backend
 
 
 router = APIRouter(
     prefix="/upload",
-    tags=["工单文件上传"]
+    tags=["工单文件上传"],
+    dependencies=[Depends(require_login)],
 )
 
 
@@ -28,6 +30,9 @@ def upload_workorder_file(
     1. 保存到 backend/data/raw/（保留原文件，不进 checkpoint）；
     2. 默认将解析结果 import 进 Postgres（控制台点击上传 = 该通道已批准写入）。
     """
+
+    if get_data_profile() == "demo":
+        raise HTTPException(status_code=403, detail="demo 模式禁止上传工单")
 
     if mode not in {"replace", "append"}:
         raise HTTPException(status_code=422, detail="import mode 必须是 replace 或 append")

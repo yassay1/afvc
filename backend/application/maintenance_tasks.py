@@ -5,19 +5,33 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from backend.domain.maintenance import DEFAULT_FAULT_FOCUS
+from backend.domain.maintenance import (
+    DEFAULT_FAULT_FOCUS,
+    MaintenanceTaskTransitionError,
+    MaintenanceTaskValidationError,
+)
 from backend.infrastructure import maintenance_task_repo as repo
+
+
+def _validated_priority(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise MaintenanceTaskValidationError("priority 必须为大于 0 的整数")
+    return value
 
 
 def create_maintenance_task(payload: dict[str, Any]) -> dict[str, Any]:
     assetnum = str(payload.get("assetnum") or "").strip()
     if not assetnum:
         raise ValueError("创建检修任务需要 assetnum")
+    priority = _validated_priority(payload.get("priority", 100))
+    requested_status = str(payload.get("status") or "planned").strip().lower()
+    if requested_status == "done":
+        raise MaintenanceTaskTransitionError("任务需提交现场执行反馈后才能标记为已完成")
     body = {
         "assetnum": assetnum,
         "station_name": payload.get("station_name"),
         "fault_focus": payload.get("fault_focus") or DEFAULT_FAULT_FOCUS,
-        "priority": int(payload.get("priority") or 100),
+        "priority": priority,
         "planned_date": payload.get("planned_date") or date.today().isoformat(),
         "assignee_crew_id": payload.get("assignee_crew_id"),
         "status": payload.get("status") or "planned",
@@ -49,7 +63,15 @@ def adjust_maintenance_task(task_id: str, patch: dict[str, Any]) -> dict[str, An
     allowed = {"priority", "planned_date", "assignee_crew_id", "status"}
     clean = {k: v for k, v in patch.items() if k in allowed and v is not None}
     if not clean:
-        raise ValueError("至少提供 priority / planned_date / assignee_crew_id / status 之一")
+        raise MaintenanceTaskValidationError("至少提供 priority / planned_date / assignee_crew_id / status 之一")
+    if "priority" in clean:
+        clean["priority"] = _validated_priority(clean["priority"])
+    current = repo.get_task(task_id)
+    if current is None:
+        raise ValueError(f"检修任务不存在：{task_id}")
+    requested_status = str(clean.get("status") or "").strip().lower()
+    if requested_status == "done" and current.get("status") != "done":
+        raise MaintenanceTaskTransitionError("任务需提交现场执行反馈后才能标记为已完成")
     task = repo.update_task(task_id, clean)
     return {"status": "success", "message": "检修任务已调整", "task": task}
 
@@ -64,7 +86,7 @@ def submit_maintenance_feedback(
 ) -> dict[str, Any]:
     text = (result or "").strip()
     if not text:
-        raise ValueError("反馈结果 result 不能为空")
+        raise MaintenanceTaskValidationError("反馈结果 result 不能为空")
     task = repo.record_feedback(
         task_id,
         result=text,

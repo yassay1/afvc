@@ -234,7 +234,7 @@ def predict_device_risk(assetnum: str) -> dict[str, Any]:
     当前逻辑：
     1. 优先尝试读取外部预测结果表（真实模型）；
     2. 如果没有外部预测结果，则回退到可解释的统计基线；
-    3. FastAPI 路由和 Streamlit 前端不需要关心预测来源。
+    3. FastAPI 路由和 Web 前端不需要关心预测来源。
     """
     target_assetnum = assetnum.strip()
 

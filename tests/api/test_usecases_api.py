@@ -2,13 +2,69 @@
 
 from fastapi.testclient import TestClient
 
+from backend.application import usecases
 from backend.main import app
 
 client = TestClient(app)
 
 
+def test_device_list_endpoint(monkeypatch):
+    expected = {
+        "status": "success",
+        "message": "设备列表获取成功",
+        "device_count": 1,
+        "devices": [{
+            "assetnum": "DEMO-AGM-001",
+            "workorder_count": 2,
+            "station_name": "示例站",
+            "line": "L01",
+            "brand": "DEMO",
+            "last_record_time": "2026-01-01T08:00:00",
+        }],
+    }
+    monkeypatch.setattr(usecases, "get_device_list", lambda: expected)
+    response = client.get("/usecases/devices")
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
+def test_device_list_empty(monkeypatch):
+    monkeypatch.setattr(usecases, "get_device_list", lambda: {
+        "status": "success", "message": "设备列表获取成功", "device_count": 0, "devices": [],
+    })
+    response = client.get("/usecases/devices")
+    assert response.status_code == 200
+    assert response.json()["devices"] == []
+    assert response.json()["device_count"] == 0
+
+
+def test_device_list_application_errors(monkeypatch):
+    def missing_column():
+        raise ValueError("数据中缺少 assetnum 字段")
+
+    monkeypatch.setattr(usecases, "get_device_list", missing_column)
+    response = client.get("/usecases/devices")
+    assert response.status_code == 404
+    assert "assetnum" in response.json()["detail"]
+
+    def unavailable_source():
+        raise RuntimeError("数据源不可用")
+
+    monkeypatch.setattr(usecases, "get_device_list", unavailable_source)
+    response = client.get("/usecases/devices")
+    assert response.status_code == 500
+
+
+def test_device_list_openapi_contract():
+    operation = client.get("/openapi.json").json()["paths"]["/usecases/devices"]["get"]
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("DeviceListResponse")
+
+
 def test_diagnosis_endpoint():
-    r = client.get("/usecases/devices/1000029970/diagnosis")
+    from backend.core.config import get_data_profile
+
+    assetnum = "DEMO-AGM-001" if get_data_profile() == "demo" else "1000029970"
+    r = client.get(f"/usecases/devices/{assetnum}/diagnosis")
     assert r.status_code == 200
     body = r.json()
     assert "risk_prediction" in body or body.get("status") == "success"
@@ -55,25 +111,34 @@ def test_maintenance_http_loop():
     task = created.json()["task"]
     task_id = task["id"]
     assert task["assetnum"] == top["assetnum"]
+    try:
+        patched = client.patch(
+            f"/usecases/maintenance/tasks/{task_id}",
+            json={"status": "in_progress", "priority": 2},
+        )
+        assert patched.status_code == 200
+        assert patched.json()["task"]["status"] == "in_progress"
 
-    patched = client.patch(
-        f"/usecases/maintenance/tasks/{task_id}",
-        json={"status": "in_progress", "priority": 2},
-    )
-    assert patched.status_code == 200
-    assert patched.json()["task"]["status"] == "in_progress"
+        feedback = client.post(
+            f"/usecases/maintenance/tasks/{task_id}/feedback",
+            json={
+                "result": "HTTP 闭环验收：已现场处理",
+                "matched_fault": True,
+                "followed_suggestion": True,
+            },
+        )
+        assert feedback.status_code == 200
+        assert feedback.json()["task"]["status"] == "done"
 
-    feedback = client.post(
-        f"/usecases/maintenance/tasks/{task_id}/feedback",
-        json={
-            "result": "HTTP 闭环验收：已现场处理",
-            "matched_fault": True,
-            "followed_suggestion": True,
-        },
-    )
-    assert feedback.status_code == 200
-    assert feedback.json()["task"]["status"] == "done"
+        listed = client.get("/usecases/maintenance/tasks", params={"status": "done"})
+        assert listed.status_code == 200
+        assert any(t["id"] == task_id for t in listed.json()["tasks"])
+    finally:
+        from backend.core.config import is_sql_backend
 
-    listed = client.get("/usecases/maintenance/tasks", params={"status": "done"})
-    assert listed.status_code == 200
-    assert any(t["id"] == task_id for t in listed.json()["tasks"])
+        if is_sql_backend():
+            from backend.infrastructure.db import get_pool
+
+            with get_pool().connection() as conn:
+                conn.execute("DELETE FROM business.maintenance_tasks WHERE id = %s", (task_id,))
+                conn.commit()

@@ -35,7 +35,7 @@
 | 节点 | 职责 |
 |------|------|
 | `model` | 带系统提示与会话消息调 LLM；未达轮次上限时 `bind_tools` |
-| `tools` | 执行已注册 Tool（内部调 Application）；更新 `last_assetnum`、工具轮次 |
+| `tools` | 执行已注册 Tool（内部调 Application）；更新 `last_assetnum`、工具轮次。面向模型的风险与建议结果会过滤文件名、内部字段和排序分值，并用检修人员可理解的来源与理由表达；HTTP 响应契约保持原样 |
 
 约束示例：单轮工具轮次上限（实现中有 `MAX_TOOL_ROUNDS`）；超出则结束循环并给出当前可给的答复。
 
@@ -56,13 +56,13 @@
 | 分组 | 能力方向 | 说明 |
 |------|----------|------|
 | 预测 | 风险、高风险榜、故障类型 | 可占位；只读为主 |
-| 维修作业（只读已接线） | `list_maintenance_suggestions`、`list_maintenance_tasks` | 与 HTTP 共用 Application；建议顺序与 `reasons` 由服务端决定，**禁止**模型重排 |
+| 维修作业（只读已接线） | `list_maintenance_suggestions`、`list_maintenance_tasks` | 与 HTTP 共用 Application；建议顺序与排序依据由服务端决定，**禁止**模型重排。对话工具收到经过用户语言整理的依据；HTTP 保留原有字段 |
 | 维修作业（写，未暴露为 Tool） | 创建 / 调整 / 反馈 / 接受建议 | **明确确认路径 = 控制台或 HTTP**（`/usecases/maintenance/*`）；**不**并入 `pending_actions`；Agent 只读建议/任务后引导用户走该路径 |
 | 知识 | 手册/SOP 检索 | 支撑；按需 Tool 调用，不以 Prompt 当唯一库 |
 | 数据 | 概览、历史等 | 按需 |
 | 敏感写 | 工单增删改/导入等 | 仅提案，须 HITL（与检修任务两条线） |
 
-`advise_maintenance` 为单设备 SOP/巡检向参考；`list_maintenance_suggestions` 为今日检修排序清单——二者不同。`diagnose_device` 为设备综合聚合快捷，不是今日安排主路径。
+`advise_maintenance` 为单设备 SOP/巡检向参考；`list_maintenance_suggestions` 为检修建议排序清单——二者不同。`diagnose_device` 为设备综合聚合快捷，不是建议排序主路径。
 
 HTTP 形状见 [API.md](./API.md)。
 
@@ -86,7 +86,7 @@ HTTP 形状见 [API.md](./API.md)。
 
 | 情况 | 行为 |
 |------|------|
-| `AFVC_USE_LLM=false` 或模型供应商不可用 | 规则兜底：可映射今日建议 / 检修任务列表（及原有概览、高风险、单设备用例）；任务写仍请走控制台 / HTTP |
+| `AFVC_USE_LLM=false` 或模型供应商不可用 | 规则兜底：可映射检修建议 / 检修任务列表（及原有概览、高风险、单设备用例）；只读用例失败返回 `status=error`，任务写仍请走控制台 / HTTP |
 | 主图 / DB / 用例抛错 | 按错误返回；不伪装成「模型繁忙」 |
 
 ## 8. 非目标

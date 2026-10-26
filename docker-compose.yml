@@ -1,19 +1,20 @@
+name: afvc-demo
 services:
-  postgres:
+  postgres-demo:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: afvc
-      POSTGRES_PASSWORD: afvc
-      POSTGRES_DB: afvc
+      POSTGRES_USER: afvc_demo
+      POSTGRES_PASSWORD: afvc_demo
+      POSTGRES_DB: afvc_demo
     ports:
-      - "5432:5432"
+      - "127.0.0.1:55433:5432"
     volumes:
-      - afvc_pgdata:/var/lib/postgresql/data
+      - afvc_demo_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U afvc -d afvc"]
+      test: ["CMD-SHELL", "pg_isready -U afvc_demo -d afvc_demo"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  afvc_pgdata:
+  afvc_demo_pgdata:

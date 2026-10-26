@@ -83,7 +83,7 @@ def final_answer_from_state(state: dict[str, Any]) -> str:
         if isinstance(message, AIMessage) and not getattr(message, "tool_calls", None):
             content = message.content
             if isinstance(content, str) and content.strip():
-                return content
+                return content.replace("本轮使用 AI 编排能力。", "").strip()
             if isinstance(content, list):
                 parts = [
                     block.get("text", "")
@@ -92,7 +92,7 @@ def final_answer_from_state(state: dict[str, Any]) -> str:
                 ]
                 text = "".join(parts).strip()
                 if text:
-                    return text
+                    return text.replace("本轮使用 AI 编排能力。", "").strip()
     return "我已经查询了相关能力，但这一轮没有生成完整文字答复。请再补充一下设备编号或你想看的具体内容。"
 
 

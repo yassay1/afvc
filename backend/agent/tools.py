@@ -26,6 +26,67 @@ TOOL_RESULT_CHAR_LIMIT = 12000
 TOOL_REGISTRY = CAPABILITIES
 
 
+def _risk_percent(value: Any) -> str | None:
+    return f"{round(value * 100)}%" if isinstance(value, (int, float)) else None
+
+
+def _friendly_suggestion_reason(reason: str) -> str:
+    import re
+
+    risk = re.match(r"^90 日复发风险\s+([0-9.]+)$", reason)
+    if risk:
+        return f"未来 90 天内再次出现故障工单的风险参考值为 {round(float(risk.group(1)) * 100)}%"
+    history = re.match(r"^近史\s+(\d+)/(\d+)\s+条含「(.+)」$", reason)
+    if history:
+        return f"近 {history.group(2)} 条相关工单中，有 {history.group(1)} 条记录了“{history.group(3)}”现象"
+    crew = re.match(r"^匹配班组\s+(.+?)（合成排班，非真实人员）$", reason)
+    if crew:
+        return f"演示排班建议班组为 {crew.group(1)}，安排前请核对现场班组"
+    spare = re.match(r"^备件\s+(.+?)\s+库存\s+(\d+)（合成库存，非真实备件）$", reason)
+    if spare:
+        return f"演示库存显示 {spare.group(1)} 有 {spare.group(2)} 件，安排前请核对现场库存"
+    if "虚构站点模拟权重" in reason:
+        return "站点参考信息已纳入建议排序（体验数据）"
+    if reason == "有可用检修班组（模拟）":
+        return "演示排班显示有可用检修班组，请现场核实"
+    if reason == "相关备件有库存（模拟）":
+        return "演示库存显示有相关备件，请现场核实"
+    return reason
+
+
+def _risk_source_label(result: dict[str, Any]) -> str:
+    source = result.get("prediction_source")
+    if source == "external_prediction_csv":
+        return "外部风险预测结果"
+    if source == "statistical_baseline" or result.get("prediction_tier") == "statistical_baseline":
+        return "基于历史工单的统计估算"
+    return "接口未说明"
+
+
+def _agent_risk_result(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "status": result.get("status"),
+        "message": "设备风险参考已查询。",
+        "assetnum": result.get("assetnum"),
+        "station_name": result.get("station_name"),
+        "line": result.get("line"),
+        "risk_by_window": {
+            "7 天": _risk_percent(result.get("risk_7d")),
+            "14 天": _risk_percent(result.get("risk_14d")),
+            "21 天": _risk_percent(result.get("risk_21d")),
+            "30 天": _risk_percent(result.get("risk_30d")),
+            "60 天": _risk_percent(result.get("risk_60d")),
+            "90 天": _risk_percent(result.get("risk_90d")),
+        },
+        "warning_level": result.get("warning_level"),
+        "suggested_inspection_window": result.get("suggested_inspection_window"),
+        "warning_reason": result.get("warning_reason"),
+        "data_source": _risk_source_label(result),
+        "data_updated_at": "接口未提供更新时间",
+        "risk_explanation": "风险表示未来对应时间窗内再次出现故障工单的参考可能性，不是故障发生日期。",
+    }
+
+
 def dumps_tool_result(payload: Any) -> str:
     text = json.dumps(payload, ensure_ascii=False, default=str)
     if len(text) <= TOOL_RESULT_CHAR_LIMIT:
@@ -62,7 +123,11 @@ def _proposal_payload(action: dict[str, Any]) -> dict[str, Any]:
 
 def _get_overview(top_n: int = 10) -> str:
     """查询当前工单工作集的数据概览：数量、站点/线路/品牌分布、时间范围。不需要设备编号。"""
-    return dumps_tool_result(invoke_data_capability("get_overview", top_n=top_n))
+    result = invoke_data_capability("get_overview", top_n=top_n)
+    source = "当前接入的工单数据库" if result.get("data_backend") == "sql" else "当前接入的工单文件" if result.get("data_backend") == "file" else "接口未说明"
+    visible = {key: value for key, value in result.items() if key not in {"current_file", "file_path", "data_backend"}}
+    visible.update({"data_source": source, "data_updated_at": "接口未提供更新时间"})
+    return dumps_tool_result(visible)
 
 
 def _get_device_history(assetnum: str, limit: int = 20) -> str:
@@ -74,12 +139,33 @@ def _get_device_history(assetnum: str, limit: int = 20) -> str:
 
 def _list_high_risk(top_n: int = 10) -> str:
     """列出当前工作集中复发风险较高的设备，用于巡检优先级。不需要设备编号。"""
-    return dumps_tool_result(usecases.list_high_risk_devices(top_n=top_n))
+    result = usecases.list_high_risk_devices(top_n=top_n)
+    devices = []
+    for device in result.get("devices") or []:
+        devices.append({
+            "assetnum": device.get("assetnum"),
+            "station_name": device.get("station_name"),
+            "line": device.get("line"),
+            "risk_by_window": {
+                "30 天": _risk_percent(device.get("risk_30d")),
+                "90 天": _risk_percent(device.get("risk_90d")),
+            },
+            "warning_level": device.get("warning_level"),
+            "suggested_inspection_window": device.get("suggested_inspection_window"),
+        })
+    return dumps_tool_result({
+        "status": result.get("status"),
+        "message": "高风险设备参考列表已查询。",
+        "devices": devices,
+        "data_source": _risk_source_label(result),
+        "data_updated_at": "接口未提供更新时间",
+        "risk_explanation": "风险表示未来对应时间窗内再次出现故障工单的参考可能性，不是故障发生日期。",
+    })
 
 
 def _predict_device_risk(assetnum: str) -> str:
     """预测一台设备在未来窗口内再次产生故障工单的风险。需要设备编号。风险不是故障日期。"""
-    return dumps_tool_result(usecases.predict_device_risk(assetnum=assetnum))
+    return dumps_tool_result(_agent_risk_result(usecases.predict_device_risk(assetnum=assetnum)))
 
 
 def _predict_fault_type(assetnum: str, window_days: int = 30) -> str:
@@ -95,10 +181,37 @@ def _advise_maintenance(assetnum: str) -> str:
 
 
 def _list_maintenance_suggestions(top_n: int = 10, fault_focus: str = "暂停服务") -> str:
-    """今日检修建议：服务端确定性规则排序并附 reasons。用于安排优先修哪些闸机。不要对返回列表重排或改优先级。"""
-    return dumps_tool_result(
-        usecases.list_maintenance_suggestions(top_n=top_n, fault_focus=fault_focus)
-    )
+    """查询已排好顺序的检修建议及人员可以理解的依据。保持返回顺序，不要自行调整优先级。"""
+    result = usecases.list_maintenance_suggestions(top_n=top_n, fault_focus=fault_focus)
+    source_note = str(result.get("model_note") or "")
+    if "prediction_results.csv" in source_note:
+        risk_source = "外部风险预测结果；接口未提供更新时间"
+    elif "统计基线" in source_note:
+        risk_source = "基于历史工单的统计估算；接口未提供更新时间"
+    else:
+        risk_source = "接口未说明风险来源和更新时间"
+    visible_suggestions = []
+    for row in result.get("suggestions") or []:
+        visible_suggestions.append({
+            "assetnum": row.get("assetnum"),
+            "station_name": row.get("station_name"),
+            "fault_focus": row.get("fault_focus"),
+            "warning_level": row.get("warning_level"),
+            "risk_90d": _risk_percent(row.get("risk_90d")),
+            "reasons": [_friendly_suggestion_reason(str(reason)) for reason in row.get("reasons") or []],
+        })
+    visible = {
+        "status": result.get("status"),
+        "message": "检修建议已生成。",
+        "fault_focus": result.get("fault_focus"),
+        "suggestions": visible_suggestions,
+        "order_note": "以下顺序由服务端提供，请保持原顺序。",
+        "suggestion_generated_at": "接口未提供建议生成时间",
+        "risk_data_source": risk_source,
+    }
+    if any("模拟" in str(row.get("data_note") or "") for row in result.get("suggestions") or []):
+        visible["resource_data_note"] = "人员、备件和站点参考信息为体验数据，不代表现场排班或库存；安排前请核实现场情况。"
+    return dumps_tool_result(visible)
 
 
 def _list_maintenance_tasks(status: str | None = None) -> str:

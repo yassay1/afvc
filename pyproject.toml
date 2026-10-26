@@ -10,7 +10,7 @@ readme = "README.md"
 
 [tool.ruff]
 target-version = "py312"
-src = ["backend", "frontend", "tests", "scripts"]
+src = ["backend", "tests", "scripts"]
 line-length = 120
 
 [tool.ruff.lint]

@@ -1,0 +1,383 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "8ca1c066-eca3-5400-9f9e-742e9cbd3e35",
+      "assetnum": "DEMO-AGM-001",
+      "station_name": "星澜站",
+      "fault_focus": "暂停服务",
+      "priority": 13,
+      "planned_date": "2026-10-16",
+      "assignee_crew_id": "DEMO-CREW-02",
+      "status": "planned",
+      "suggestion_score": 0.534,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "f858b5a5-ead3-5fad-9b65-ec18fd6ddf35",
+      "assetnum": "DEMO-AGM-002",
+      "station_name": "星澜站",
+      "fault_focus": "暂停服务",
+      "priority": 16,
+      "planned_date": "2026-10-17",
+      "assignee_crew_id": "DEMO-CREW-03",
+      "status": "planned",
+      "suggestion_score": 0.617,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "65e1391b-8a86-5749-8bf0-bc056343ea8c",
+      "assetnum": "DEMO-AGM-003",
+      "station_name": "星澜站",
+      "fault_focus": "暂停服务",
+      "priority": 19,
+      "planned_date": "2026-10-18",
+      "assignee_crew_id": "DEMO-CREW-04",
+      "status": "planned",
+      "suggestion_score": 0.7,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "84739870-1eba-57d7-8bb3-9a31acac91d0",
+      "assetnum": "DEMO-AGM-004",
+      "station_name": "云桥站",
+      "fault_focus": "暂停服务",
+      "priority": 22,
+      "planned_date": "2026-10-19",
+      "assignee_crew_id": "DEMO-CREW-01",
+      "status": "planned",
+      "suggestion_score": 0.45,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "688367cb-0b3a-536e-86b5-e95746732416",
+      "assetnum": "DEMO-AGM-005",
+      "station_name": "云桥站",
+      "fault_focus": "暂停服务",
+      "priority": 25,
+      "planned_date": "2026-10-20",
+      "assignee_crew_id": "DEMO-CREW-02",
+      "status": "planned",
+      "suggestion_score": 0.534,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "2a2a48b8-3b72-5933-b588-de6e2ea2d207",
+      "assetnum": "DEMO-AGM-006",
+      "station_name": "云桥站",
+      "fault_focus": "暂停服务",
+      "priority": 28,
+      "planned_date": "2026-10-21",
+      "assignee_crew_id": "DEMO-CREW-03",
+      "status": "planned",
+      "suggestion_score": 0.617,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "981617e5-7b21-5177-aea8-be942207ec5c",
+      "assetnum": "DEMO-AGM-007",
+      "station_name": "青禾站",
+      "fault_focus": "暂停服务",
+      "priority": 31,
+      "planned_date": "2026-10-22",
+      "assignee_crew_id": "DEMO-CREW-04",
+      "status": "in_progress",
+      "suggestion_score": 0.7,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "267bd3b1-6d4f-57bf-897d-8408ac1dff66",
+      "assetnum": "DEMO-AGM-008",
+      "station_name": "青禾站",
+      "fault_focus": "暂停服务",
+      "priority": 34,
+      "planned_date": "2026-10-23",
+      "assignee_crew_id": "DEMO-CREW-01",
+      "status": "in_progress",
+      "suggestion_score": 0.45,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "bfc44c24-1743-5361-bf72-9a4eef64efd1",
+      "assetnum": "DEMO-AGM-009",
+      "station_name": "青禾站",
+      "fault_focus": "暂停服务",
+      "priority": 37,
+      "planned_date": "2026-10-15",
+      "assignee_crew_id": "DEMO-CREW-02",
+      "status": "in_progress",
+      "suggestion_score": 0.534,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "2b8837e1-1334-51a6-90c6-8d626ed6ac0e",
+      "assetnum": "DEMO-AGM-010",
+      "station_name": "北辰站",
+      "fault_focus": "暂停服务",
+      "priority": 40,
+      "planned_date": "2026-10-16",
+      "assignee_crew_id": "DEMO-CREW-03",
+      "status": "in_progress",
+      "suggestion_score": 0.617,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "fee145b9-0a04-5b13-b159-ebff463f7cfa",
+      "assetnum": "DEMO-AGM-011",
+      "station_name": "北辰站",
+      "fault_focus": "暂停服务",
+      "priority": 43,
+      "planned_date": "2026-10-17",
+      "assignee_crew_id": "DEMO-CREW-04",
+      "status": "in_progress",
+      "suggestion_score": 0.7,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "a63638ef-3164-5937-beb4-4df436dcd9dd",
+      "assetnum": "DEMO-AGM-012",
+      "station_name": "北辰站",
+      "fault_focus": "暂停服务",
+      "priority": 46,
+      "planned_date": "2026-10-18",
+      "assignee_crew_id": "DEMO-CREW-01",
+      "status": "in_progress",
+      "suggestion_score": 0.45,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": null,
+      "feedback_matched_fault": null,
+      "feedback_followed_suggestion": null,
+      "feedback_note": null,
+      "feedback_at": null
+    },
+    {
+      "id": "5b392cbe-b43d-5f41-9577-83b104599833",
+      "assetnum": "DEMO-AGM-013",
+      "station_name": "松影站",
+      "fault_focus": "暂停服务",
+      "priority": 49,
+      "planned_date": "2026-10-19",
+      "assignee_crew_id": "DEMO-CREW-02",
+      "status": "done",
+      "suggestion_score": 0.534,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    },
+    {
+      "id": "0bb226f8-5eed-57f8-baea-26c9976fb9f6",
+      "assetnum": "DEMO-AGM-014",
+      "station_name": "松影站",
+      "fault_focus": "暂停服务",
+      "priority": 52,
+      "planned_date": "2026-10-20",
+      "assignee_crew_id": "DEMO-CREW-03",
+      "status": "done",
+      "suggestion_score": 0.617,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    },
+    {
+      "id": "4f6f6253-8080-5ccb-97aa-9dd18c850586",
+      "assetnum": "DEMO-AGM-015",
+      "station_name": "松影站",
+      "fault_focus": "暂停服务",
+      "priority": 55,
+      "planned_date": "2026-10-21",
+      "assignee_crew_id": "DEMO-CREW-04",
+      "status": "done",
+      "suggestion_score": 0.7,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    },
+    {
+      "id": "9a5face8-1dcc-54fb-9f05-9a10862b3f23",
+      "assetnum": "DEMO-AGM-016",
+      "station_name": "月港站",
+      "fault_focus": "暂停服务",
+      "priority": 58,
+      "planned_date": "2026-10-22",
+      "assignee_crew_id": "DEMO-CREW-01",
+      "status": "done",
+      "suggestion_score": 0.45,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    },
+    {
+      "id": "e03e8fc5-7bc7-5ed5-8092-4e4476ce768b",
+      "assetnum": "DEMO-AGM-017",
+      "station_name": "月港站",
+      "fault_focus": "暂停服务",
+      "priority": 61,
+      "planned_date": "2026-10-23",
+      "assignee_crew_id": "DEMO-CREW-02",
+      "status": "done",
+      "suggestion_score": 0.534,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    },
+    {
+      "id": "a92c6934-308f-5360-8957-98f3b9ea48ce",
+      "assetnum": "DEMO-AGM-018",
+      "station_name": "月港站",
+      "fault_focus": "暂停服务",
+      "priority": 64,
+      "planned_date": "2026-10-15",
+      "assignee_crew_id": "DEMO-CREW-03",
+      "status": "done",
+      "suggestion_score": 0.617,
+      "suggestion_reasons": [
+        "合成风险输入",
+        "模拟站点重要度",
+        "模拟班组及备件资源"
+      ],
+      "feedback_result": "完成模拟检修，扇门动作与通信自检通过",
+      "feedback_matched_fault": true,
+      "feedback_followed_suggestion": true,
+      "feedback_note": "合成执行反馈，仅用于演示",
+      "feedback_at": "2026-10-19T16:00:00+08:00"
+    }
+  ]
+}

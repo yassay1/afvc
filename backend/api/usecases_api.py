@@ -2,23 +2,42 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from backend.api.deps import require_login
 from backend.application import usecases
+from backend.domain.maintenance import MaintenanceTaskTransitionError, MaintenanceTaskValidationError
 from backend.domain.risk import SUPPORTED_PREDICTION_WINDOWS
 
 router = APIRouter(
     prefix="/usecases",
     tags=["业务用例"],
+    dependencies=[Depends(require_login)],
 )
+
+
+class DeviceListItem(BaseModel):
+    assetnum: str
+    workorder_count: int
+    station_name: str | None = None
+    line: str | None = None
+    brand: str | None = None
+    last_record_time: str | None = None
+
+
+class DeviceListResponse(BaseModel):
+    status: str
+    message: str
+    device_count: int
+    devices: list[DeviceListItem]
 
 
 class MaintenanceTaskCreate(BaseModel):
     assetnum: str
     station_name: str | None = None
     fault_focus: str = "暂停服务"
-    priority: int = 100
+    priority: int = Field(default=100, ge=1, strict=True)
     planned_date: str | None = None
     assignee_crew_id: str | None = None
     status: str = "planned"
@@ -28,7 +47,7 @@ class MaintenanceTaskCreate(BaseModel):
 
 
 class MaintenanceTaskPatch(BaseModel):
-    priority: int | None = None
+    priority: int | None = Field(default=None, ge=1, strict=True)
     planned_date: str | None = None
     assignee_crew_id: str | None = None
     status: str | None = None
@@ -43,7 +62,7 @@ class MaintenanceFeedbackBody(BaseModel):
 
 class AcceptSuggestionBody(BaseModel):
     suggestion: dict[str, Any] | None = None
-    priority: int | None = None
+    priority: int | None = Field(default=None, ge=1, strict=True)
     assetnum: str | None = None
     station_name: str | None = None
     fault_focus: str | None = None
@@ -53,6 +72,10 @@ class AcceptSuggestionBody(BaseModel):
 
 
 def _http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, MaintenanceTaskTransitionError):
+        return HTTPException(status_code=409, detail=str(exc))
+    if isinstance(exc, MaintenanceTaskValidationError):
+        return HTTPException(status_code=422, detail=str(exc))
     if isinstance(exc, FileNotFoundError):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, ValueError):
@@ -72,6 +95,14 @@ def overview(top_n: int = Query(default=10, ge=1, le=30)):
 def high_risk(top_n: int = Query(default=10, ge=1, le=50)):
     try:
         return usecases.list_high_risk_devices(top_n=top_n)
+    except Exception as e:
+        raise _http_error(e) from e
+
+
+@router.get("/devices", response_model=DeviceListResponse)
+def device_list():
+    try:
+        return usecases.get_device_list()
     except Exception as e:
         raise _http_error(e) from e
 

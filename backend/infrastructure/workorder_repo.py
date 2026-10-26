@@ -381,18 +381,16 @@ def import_from_path(
 
 
 def seed_default_if_empty() -> dict[str, Any] | None:
+    from backend.core.config import get_data_profile
+
     if count_workorders() > 0:
         return None
     data_root = Path(__file__).resolve().parent.parent / "data"
     default_path = data_root / "raw" / DEFAULT_DATA_FILE
     demo_path = data_root / "mock" / "workorders_demo.csv"
-    seed_path = default_path if default_path.exists() else demo_path
+    seed_path = demo_path if get_data_profile() == "demo" else default_path
     if not seed_path.exists():
-        logger.warning(
-            "no seed workorder file (raw %s or mock demo missing)",
-            DEFAULT_DATA_FILE,
-        )
-        return None
+        raise FileNotFoundError(f"{get_data_profile()} 工单种子缺失：{seed_path}")
     logger.info("seeding empty workorders table from %s", seed_path.name)
     return import_from_path(seed_path, mode="replace")
 

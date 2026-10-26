@@ -11,6 +11,15 @@ TASK_STATUSES: Final[frozenset[str]] = frozenset(
     {"planned", "in_progress", "done", "cancelled"}
 )
 
+
+class MaintenanceTaskTransitionError(ValueError):
+    """任务状态变更缺少必要的现场反馈。"""
+
+
+class MaintenanceTaskValidationError(ValueError):
+    """检修任务字段未通过业务校验。"""
+
+
 # score = w_risk * risk_90d + w_importance * station_importance
 #       + w_fault * fault_relevance + w_resource * resource_factor
 WEIGHT_RISK: Final[float] = 0.45

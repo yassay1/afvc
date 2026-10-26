@@ -1,0 +1,111 @@
+.maintenance-page { display: grid; gap: 12px; max-width: 680px; margin: 0 auto; }
+.maintenance-title { display: flex; align-items: center; min-height: 82px; padding: 10px 3px; background: linear-gradient(90deg, #f5f7fb 22%, #f5f7fbe8 53%, #f5f7fba8), url('../../assets/metro-header.webp') right 45% / cover no-repeat; }
+.maintenance-title h1 { margin: 0; color: var(--ink); font-size: 28px; }
+.maintenance-page .segment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; max-width: none; gap: 0; margin-bottom: 0; padding: 0; border-radius: 13px; background: #fff; box-shadow: 0 5px 16px #2f4b770d; }
+.maintenance-page .segment button { position: relative; min-height: 48px; border-radius: 13px; color: var(--muted); font-weight: 700; }
+.maintenance-page .segment button[aria-pressed="true"] { color: var(--action); background: #fff; box-shadow: none; }
+.maintenance-page .segment button[aria-pressed="true"]::after { content: ''; position: absolute; right: 24%; bottom: 0; left: 24%; height: 3px; border-radius: 3px; background: var(--action); }
+.maintenance-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.maintenance-page:not(.task-detail) > .maintenance-panel { padding: 0; border: 0; background: transparent; }
+.maintenance-panel, .maintenance-form { padding: 22px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); }
+.maintenance-panel__head { margin-bottom: 17px; }
+.maintenance-panel h2, .maintenance-form h2 { margin: 0; color: var(--ink); font-size: 21px; }
+.maintenance-panel__head p, .maintenance-form__head p { margin: 5px 0 0; color: var(--muted); font-size: 14px; }
+.maintenance-filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.maintenance-page .maintenance-filters { display: grid; gap: 10px; margin: 2px 0 4px; }
+.maintenance-page .maintenance-filters .maintenance-search { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 14px; background: #eef2f8; color: #415b82; }
+.maintenance-page .maintenance-search input { width: 100%; min-width: 0; height: 48px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 14px/1.4 var(--font-ui); }
+.maintenance-page .maintenance-search input::placeholder { color: #7f8fa8; }
+.maintenance-page .maintenance-search:focus-within { outline: 3px solid var(--action); outline-offset: 2px; }
+.maintenance-filter-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.maintenance-filter-chips button { min-height: 36px; padding: 6px 8px; border: 0; border-radius: 999px; background: #ecf1f8; color: #3b526f; font: 700 11px/1.25 var(--font-ui); white-space: nowrap; }
+.maintenance-filter-chips button[aria-pressed="true"] { background: #0e3a83; color: #fff; }
+.maintenance-filter-context { margin: 0; color: var(--muted); font-size: 12px; }
+.maintenance-filters label, .maintenance-form label { display: grid; gap: 6px; min-width: 0; color: var(--ink); font-size: 14px; font-weight: 700; }
+.maintenance-filters label:first-child { flex: 2 1 240px; }
+.maintenance-filters label:last-child { flex: 1 1 150px; }
+.maintenance-filters input, .maintenance-filters select, .maintenance-form input, .maintenance-form select, .maintenance-form textarea { width: 100%; min-height: 44px; padding: 8px 11px; border: 1px solid #aebbd0; border-radius: 7px; background: var(--surface); color: var(--text); font: 400 16px/1.4 var(--font-ui); }
+.maintenance-form textarea { resize: vertical; }
+.maintenance-form label small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.maintenance-list { list-style: none; display: grid; gap: 14px; margin: 0; padding: 0; }
+.maintenance-card { padding: 18px; border: 1px solid var(--border); border-left: 3px solid var(--action); border-radius: 9px; background: var(--surface); }
+.maintenance-card--suggestion { padding: 16px; border: 1px solid #e7ecf4; border-radius: 17px; box-shadow: 0 8px 22px #25446c0d; }
+.maintenance-warning { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 3px 9px; border-radius: 999px; background: #bd3026; color: #fff; font-size: 12px; font-weight: 700; }
+.maintenance-card__overview { display: flex; align-items: center; gap: 12px; min-width: 0; margin-top: 10px; }
+.maintenance-card__identity { flex: 1; min-width: 0; }
+.maintenance-card__identity .device-identity__name { display: block; margin: 0; color: var(--ink); font-size: 19px; line-height: 1.2; overflow-wrap: anywhere; }
+.maintenance-card__identity .device-identity__number, .task-card__identity .device-identity__number { font-size: 12px; }
+.maintenance-card__identity p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.maintenance-card__image { width: 82px; height: 82px; border-radius: 11px; object-position: 60% center; }
+.maintenance-card--suggestion > .maintenance-card__lead { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0; color: #b42318; font-size: 13px; font-weight: 700; line-height: 1.45; }
+.maintenance-card__lead svg { flex: none; margin-top: 2px; }
+.maintenance-card__evidence { margin-top: 12px; padding: 12px; border-radius: 12px; background: #f0f5fd; }
+.maintenance-card__evidence > strong { display: flex; align-items: center; gap: 5px; color: #184b9b; font-size: 13px; }
+.maintenance-card__evidence ul { margin: 8px 0 0; padding-left: 20px; color: #4d607c; font-size: 12px; line-height: 1.5; }
+.maintenance-card__evidence li + li { margin-top: 4px; }
+.maintenance-card__evidence li::marker { color: #3579e7; }
+.maintenance-card__evidence details { margin-top: 7px; }
+.maintenance-card__evidence summary { width: fit-content; min-height: 32px; padding: 6px 0; color: #1d4ed8; cursor: pointer; font-size: 12px; font-weight: 700; }
+.maintenance-card__note { margin-top: 9px; color: var(--muted); font-size: 12px; }
+.maintenance-card__note summary { width: fit-content; min-height: 32px; padding: 6px 0; cursor: pointer; }
+.maintenance-card__note p { margin: 5px 0 0; line-height: 1.5; }
+.maintenance-card--suggestion > .maintenance-card__missing { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+.maintenance-card--suggestion .maintenance-card__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.maintenance-card--suggestion .maintenance-card__actions > * { min-width: 0; }
+.maintenance-card--task { padding: 15px; border: 1px solid #e7ecf4; border-radius: 17px; box-shadow: 0 8px 22px #25446c0d; }
+.task-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.task-card__status { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.task-card__status--planned { background: #fff0dc; color: #9c4500; }
+.task-card__status--in_progress { background: #e7f0ff; color: #1352a6; }
+.task-card__status--done { background: #e4f7ed; color: #0b6b46; }
+.task-card__status--cancelled { background: #eef2f6; color: #525f70; }
+.task-card__id { max-width: 68%; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-align: right; }
+.task-card__overview { display: flex; align-items: center; gap: 12px; min-width: 0; margin-top: 8px; }
+.task-card__identity { flex: 1; min-width: 0; }
+.task-card__identity .device-identity__name { display: block; margin: 0; color: var(--ink); font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+.task-card__identity p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.task-card__image { width: 78px; height: 78px; border-radius: 10px; object-position: 60% center; }
+.task-card__meta { display: grid; gap: 5px; margin-top: 9px; color: #526582; font-size: 12px; }
+.task-card__meta span { display: flex; align-items: center; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.task-card__meta svg { flex: none; color: #6d85a7; }
+.maintenance-card--task .maintenance-card__actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.maintenance-card--task .maintenance-card__actions > * { min-width: 0; }
+.maintenance-card--task .maintenance-card__actions .task-card__primary { border-color: var(--action); background: var(--action); color: #fff; }
+.maintenance-card__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.maintenance-card > p { margin: 6px 0 13px; color: var(--muted); font-size: 14px; }
+.maintenance-card .reason-list { margin-top: 12px; }
+.maintenance-card__actions, .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 17px; }
+.maintenance-card__actions a, .maintenance-card__actions button, .button-primary, .button-quiet, .back-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 9px 15px; border-radius: 8px; font: 700 14px/1.3 var(--font-ui); text-decoration: none; }
+.maintenance-card__actions a, .button-quiet, .back-link { border: 1px solid var(--border); background: var(--surface); color: var(--action); }
+.maintenance-card__actions button, .button-primary { border: 1px solid var(--action); background: var(--action); color: var(--surface); }
+.maintenance-card__actions button:disabled, .button-primary:disabled, .button-quiet:disabled { opacity: .58; cursor: wait; }
+.maintenance-form { display: grid; gap: 14px; margin-top: 18px; background: var(--canvas); }
+.maintenance-form__head h3 { margin: 0; color: var(--ink); font-size: 18px; }
+.maintenance-form__head p { margin: 6px 0 0; }
+.maintenance-form .button-primary { width: fit-content; }
+.form-error { margin: 0; padding: 10px 12px; border-left: 3px solid var(--danger); background: #fff0ed; color: var(--danger); font-size: 14px; }
+.form-hint { margin: -3px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.task-status { color: var(--action); font-size: 13px; font-weight: 700; }
+.back-link { width: fit-content; }
+.task-detail__summary h1 { margin: 3px 0; font-size: 27px; }
+.task-detail__summary .device-identity__name { font-size: 27px; }
+.task-detail__summary .device-identity__number { margin-top: 3px; }
+.task-detail__summary > p:not(.section-kicker) { margin: 0 0 17px; color: var(--muted); }
+.task-detail__summary dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.task-detail__summary dl div { min-width: 0; padding: 11px; border-radius: 7px; background: var(--canvas); }
+.task-detail__summary dt { color: var(--muted); font-size: 12px; }
+.task-detail__summary dd { margin: 3px 0 0; color: var(--ink); overflow-wrap: anywhere; font-weight: 700; }
+.task-detail__reasons { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--border); }
+.task-detail__reasons h2 { margin-bottom: 9px; font-size: 17px; }
+.task-detail__source { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.task-detail__source summary { width: fit-content; min-height: 44px; padding: 11px 0; cursor: pointer; color: var(--action); font-weight: 650; }
+.task-detail__source summary:focus-visible { outline: 3px solid #2f65cf5c; outline-offset: 2px; border-radius: 4px; }
+#task-plan, #task-feedback { scroll-margin-top: 16px; }
+@media (max-width: 620px) {
+  .maintenance-panel, .maintenance-form { padding: 17px; }
+  .maintenance-filters { display: grid; }
+  .maintenance-card { padding: 15px; }
+  .maintenance-card__actions > * { flex: 1 1 auto; }
+}
+.maintenance-card__evidence > summary { display: flex; align-items: center; gap: 7px; min-height: 44px; cursor: pointer; color: var(--action); font-weight: 650; }
+.maintenance-card__evidence > summary:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }

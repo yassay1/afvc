@@ -48,6 +48,7 @@ def test_usecases_facade_exports_core_functions():
         "adjust_maintenance_task",
         "submit_maintenance_feedback",
         "get_device_history",
+        "get_device_list",
         "predict_device_risk",
         "advise_maintenance",
         "search_manual",

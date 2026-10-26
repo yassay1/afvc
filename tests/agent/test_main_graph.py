@@ -9,9 +9,14 @@ from langgraph.checkpoint.memory import MemorySaver
 from pydantic import Field
 
 from backend.agent.data_subgraph import DATA_CAPABILITIES, invoke_data_capability
-from backend.agent.graph import build_graph, invoke_main_agent
+from backend.agent.graph import build_graph, final_answer_from_state, invoke_main_agent
 from backend.agent.tools import TOOL_REGISTRY, build_exposed_tools
 from backend.interaction.service import handle_turn
+
+
+def test_final_agent_answer_hides_internal_orchestration_footer():
+    answer = final_answer_from_state({"messages": [AIMessage(content="检修建议已查询。 本轮使用 AI 编排能力。 ")]})
+    assert answer == "检修建议已查询。"
 
 
 class ScriptedChatModel(BaseChatModel):

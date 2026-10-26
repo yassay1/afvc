@@ -40,6 +40,7 @@ _MAINTENANCE_SUGGESTION_KEYWORDS = (
     "今日建议",
     "检修建议",
     "检修安排",
+    "优先检修",
     "优先修",
     "派工",
     "今天修哪些",
@@ -75,6 +76,10 @@ _REFERENCE_PHRASES = (
     "那台",
     "那应该",
 )
+_ASSETNUM_TOKEN = r"[A-Za-z0-9]{3,}(?:-[A-Za-z0-9]+)*"
+_HYPHENATED_ASSETNUM_PATTERN = (
+    r"(?<![A-Za-z0-9-])([A-Za-z0-9]{2,}(?:-[A-Za-z0-9]+)+)(?![A-Za-z0-9-])"
+)
 _BUSINESS_KEYWORDS = (
     "分析",
     "风险",
@@ -106,10 +111,10 @@ _EXPLANATION_KEYWORDS = (
 )
 _OPEN_CONNECTORS = ("比较", "矛盾", "原因", "综合", "结合", "最值得关注", "为什么")
 _SWITCH_PATTERNS = (
-    r"换成\s*([A-Za-z0-9]{3,})",
-    r"换到\s*([A-Za-z0-9]{3,})",
-    r"切换(?:到|成)?\s*(?:设备\s*)?([A-Za-z0-9]{3,})",
-    r"再看(?:一下)?\s*(?:设备\s*)?([A-Za-z0-9]{3,})",
+    rf"换成\s*({_ASSETNUM_TOKEN})(?![A-Za-z0-9-])",
+    rf"换到\s*({_ASSETNUM_TOKEN})(?![A-Za-z0-9-])",
+    rf"切换(?:到|成)?\s*(?:设备\s*)?({_ASSETNUM_TOKEN})(?![A-Za-z0-9-])",
+    rf"再看(?:一下)?\s*(?:设备\s*)?({_ASSETNUM_TOKEN})(?![A-Za-z0-9-])",
 )
 _FAULT_TYPE_PHRASES = (
     "会发生什么故障",
@@ -134,11 +139,12 @@ def _contains_any(q: str, phrases: tuple[str, ...]) -> bool:
 
 def _extract_assetnum(q: str) -> str | None:
     patterns = (
-        r"设备\s*([A-Za-z0-9]{3,})",
+        rf"设备\s*({_ASSETNUM_TOKEN})(?![A-Za-z0-9-])",
+        _HYPHENATED_ASSETNUM_PATTERN,
         r"([A-Z]{2,}\d{5,})",
         r"(\d{10,})",
     )
-    values = [x for p in patterns for x in re.findall(p, q)]
+    values = [x for p in patterns for x in re.findall(p, q, re.I)]
     return values[-1].upper() if values else None
 
 
@@ -220,7 +226,7 @@ def understand(query: str, *, last_assetnum: str | None = None) -> Understanding
     if _contains_any(q, _EXPLANATION_KEYWORDS) and not _extract_assetnum(q):
         return _result("explanation")
 
-    # 维修作业只读：不依赖 assetnum；优先于「高风险/概览」全局词，避免「优先修」落到高风险榜
+    # 维修作业只读：不依赖 assetnum；优先于「高风险/概览」全局词，避免「优先检修」落到高风险榜
     if _contains_any(q, _MAINTENANCE_SUGGESTION_KEYWORDS):
         return _result("usecase", use_case="list_maintenance_suggestions")
     if _contains_any(q, _MAINTENANCE_TASK_KEYWORDS):

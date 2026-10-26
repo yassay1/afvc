@@ -1,0 +1,16 @@
+:root {
+  color-scheme: light;
+  --ink: #0b1f3a;
+  --action: #1d4ed8;
+  --canvas: #f5f7fb;
+  --surface: #fff;
+  --text: #172033;
+  --muted: #5e6b80;
+  --border: #dfe5ef;
+  --danger: #b42318;
+  --caution: #b45309;
+  --success: #047857;
+  --font-ui: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --content-width: 960px;
+  --nav-height: 70px;
+}

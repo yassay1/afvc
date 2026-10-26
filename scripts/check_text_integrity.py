@@ -26,6 +26,11 @@ DEFAULT_TARGETS = (
 
 TEXT_SUFFIXES = {
     ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".css",
+    ".html",
     ".md",
     ".txt",
     ".ini",
@@ -45,6 +50,10 @@ SKIP_DIRS = {
     ".pytest_cache",
     ".venv",
     "__pycache__",
+    "node_modules",
+    "dist",
+    "test-results",
+    "playwright-report",
 }
 
 STRONG_MOJIBAKE_FRAGMENTS = (

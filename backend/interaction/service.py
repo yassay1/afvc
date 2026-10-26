@@ -205,7 +205,7 @@ def handle_turn_legacy(query: str, session_id: str | None = None) -> Interaction
     except Exception as exc:  # noqa: BLE001 — 对话层兜底，避免打断会话
         result = None
         answer = narrate_error(str(exc))
-        status = "success"
+        status = "error"
 
     new_last = assetnum or last_assetnum
     session_memory.update(

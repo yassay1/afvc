@@ -1,8 +1,9 @@
 """Interaction HTTP API —— turn / approve / reject."""
 
 from pydantic import BaseModel, Field
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.api.deps import require_login
 from backend.domain.pending_action import (
     ActionConflictError,
     ActionExecutionError,
@@ -19,6 +20,7 @@ from backend.application.approvals import list_pending
 router = APIRouter(
     prefix="/interaction",
     tags=["对话交互"],
+    dependencies=[Depends(require_login)],
 )
 
 

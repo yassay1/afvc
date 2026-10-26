@@ -8,7 +8,7 @@ from pathlib import Path
 
 import polars as pl
 
-from backend.core.config import is_sql_backend
+from backend.core.config import get_data_profile, is_sql_backend
 
 
 RAW_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
@@ -28,7 +28,11 @@ REQUIRED_COLUMNS = [
 
 
 def get_latest_raw_file() -> Path:
-    """获取工单 import 源：优先 raw/，否则公开仓合成 DEMO CSV。"""
+    """Get the profile's workorder file without crossing the data boundary."""
+    if get_data_profile() == "demo":
+        if not DEMO_WORKORDERS_FILE.is_file():
+            raise FileNotFoundError(f"demo 工单文件缺失：{DEMO_WORKORDERS_FILE}")
+        return DEMO_WORKORDERS_FILE
     DEFAULT_DATA_FILE = "afc非首次故障-L01线.xlsx"
 
     if not RAW_DATA_DIR.exists():
@@ -52,14 +56,10 @@ def get_latest_raw_file() -> Path:
     if all_files:
         return max(all_files, key=lambda file: file.stat().st_mtime)
 
-    if DEMO_WORKORDERS_FILE.exists():
-        return DEMO_WORKORDERS_FILE
-
     raise FileNotFoundError(
-        f"未找到工单数据文件。请：\n"
+        f"production 模式未找到工单数据文件。请：\n"
         f"1. 通过 POST /upload/workorders 上传 AFC 工单 Excel/CSV 文件；或\n"
-        f"2. 将默认数据文件 {DEFAULT_DATA_FILE} 放置到 {RAW_DATA_DIR} 目录下；或\n"
-        f"3. 使用仓库内合成样例 {DEMO_WORKORDERS_FILE}。"
+        f"2. 将默认数据文件 {DEFAULT_DATA_FILE} 放置到 {RAW_DATA_DIR} 目录下。"
     )
 
 
@@ -67,6 +67,8 @@ def read_workorder_file(file_path: Path | None = None) -> pl.DataFrame:
     """解析 AFC 工单 Excel / CSV。显式路径用于 import；无路径时读最新 raw 文件。"""
     if file_path is None:
         file_path = get_latest_raw_file()
+    if get_data_profile() == "demo" and file_path.resolve() != DEMO_WORKORDERS_FILE.resolve():
+        raise RuntimeError("demo 模式只能读取仓库中的合成工单 CSV")
 
     suffix = file_path.suffix.lower()
 

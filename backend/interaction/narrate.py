@@ -13,23 +13,21 @@ logger = logging.getLogger("afvc.narrate")
 SCIENTIFIC_BOUNDARY = (
     "科学边界说明：\n"
     "- 风险预测表示未来时间窗口内再次产生故障工单的风险，不等同于一定发生物理故障。\n"
-    "- 今日检修建议由服务端确定性规则排序并附 reasons，不得由对话侧重排优先级。\n"
     "- 单设备巡检建议（advise）是历史现象参考，不是最终根因结论。\n"
     "- 最终维修判断需结合现场检测、设备日志和人工经验。"
 )
 
 CAPABILITY_TEXT = (
     "我是 AFC 闸机检修助手，可以帮你：\n"
-    "- 今日检修建议（规则排序 + reasons）与检修任务查询\n"
+    "- 查看检修建议与跟进检修任务\n"
     "- 工单概览、高风险设备、单设备历史 / 风险 / 故障类型\n"
     "- 单设备巡检方向、手册检索；综合诊断为设备快捷聚合\n"
-    "- 检修任务创建 / 调整 / 反馈请走控制台或 HTTP /usecases/maintenance/*\n\n"
-    "例：今天优先修哪些？ / 当前有哪些检修任务？ / 分析设备 1000029970"
+    "例：查询检修建议 / 当前有哪些检修任务？ / 分析设备 1000029970"
 )
 
 CHAT_TEXT = (
     "你好。我可以协助 AFC 闸机检修安排与设备分析。"
-    "可问今日检修建议、检修任务、概览 / 高风险，或提供设备编号做单设备分析。"
+    "可问检修建议、检修任务、工单概览或设备风险，也可以提供设备编号查询单台设备。"
 )
 
 REJECTED_TEXT = (
@@ -70,11 +68,11 @@ _LLM_STATIC_KINDS = {"chat", "explanation"}
 
 _STATIC_SYSTEM_PROMPT = (
     "你是地铁 AFC 闸机检修助手。请用简洁、友好、专业的中文回应用户，"
-    "并把话题引导回：今日检修建议、检修任务查询、工单概览、高风险设备、"
+    "并把话题引导回：检修建议、检修任务查询、工单概览、高风险设备、"
     "设备历史与风险、单设备巡检参考、故障类型、手册检索。硬性要求：\n"
     "1. 不承诺超出上述范围的能力，不编造设备、数值或结论；\n"
     "2. 风险是未来窗口内再次产生故障工单的可能性，不等于精确故障日期；"
-    "今日检修排序不得由对话重排；单设备巡检建议不是最终根因；\n"
+    "检修建议顺序不得由对话重排；单设备巡检建议不是最终根因；\n"
     "3. 输出纯文本，简短即可（3~5 句以内）。"
 )
 
@@ -128,6 +126,48 @@ def _append_list(lines: list[str], title: str, items: list[Any] | None) -> None:
         lines.append(f"- {item}")
 
 
+def _human_suggestion_reason(reason: str) -> str:
+    import re
+
+    risk = re.match(r"^90 日复发风险\s+([0-9.]+)$", reason)
+    if risk:
+        try:
+            return f"未来 90 天内再次出现故障工单的风险参考值为 {round(float(risk.group(1)) * 100)}%"
+        except ValueError:
+            return "未来 90 天内再次出现故障工单的风险参考值"
+    history = re.match(r"^近史\s+(\d+)/(\d+)\s+条含「(.+)」$", reason)
+    if history:
+        return f"近 {history.group(2)} 条相关工单中，有 {history.group(1)} 条记录了“{history.group(3)}”现象"
+    crew = re.match(r"^匹配班组\s+(.+?)（合成排班，非真实人员）$", reason)
+    if crew:
+        return f"演示排班建议班组为 {crew.group(1)}，安排前请核对现场班组"
+    spare = re.match(r"^备件\s+(.+?)\s+库存\s+(\d+)（合成库存，非真实备件）$", reason)
+    if spare:
+        return f"演示库存显示 {spare.group(1)} 有 {spare.group(2)} 件，安排前请核对现场库存"
+    if "虚构站点模拟权重" in reason:
+        return "站点参考信息已纳入建议排序（体验数据）"
+    if reason == "有可用检修班组（模拟）":
+        return "演示排班显示有可用检修班组，请现场核实"
+    if reason == "相关备件有库存（模拟）":
+        return "演示库存显示有相关备件，请现场核实"
+    return "服务端提供了其他排序依据"
+
+
+def _task_status_label(status: Any) -> str:
+    return {
+        "planned": "待执行",
+        "in_progress": "执行中",
+        "done": "已完成",
+        "cancelled": "已取消",
+    }.get(status, _fmt(status))
+
+
+def _risk_label(value: Any) -> str:
+    if not isinstance(value, (int, float)):
+        return _fmt(value)
+    return f"{round(value * 100)}%"
+
+
 def narrate_overview(result: dict[str, Any]) -> str:
     basic = result.get("basic_metrics", {}) or {}
     time_range = result.get("time_range", {}) or {}
@@ -145,7 +185,8 @@ def narrate_overview(result: dict[str, Any]) -> str:
         f"- 起始时间：{_fmt(time_range.get('start_time'))}",
         f"- 结束时间：{_fmt(time_range.get('end_time'))}",
         "",
-        f"当前数据文件：{_fmt(result.get('current_file'))}",
+        f"数据来源：{'当前接入的工单文件' if result.get('data_backend') == 'file' else '当前接入的工单数据库' if result.get('data_backend') == 'sql' else '接口未说明'}。",
+        "接口未提供数据更新时间。",
         "",
         SCIENTIFIC_BOUNDARY,
     ]
@@ -165,7 +206,7 @@ def narrate_high_risk(result: dict[str, Any]) -> str:
                 "",
                 f"{i}. 设备 {_fmt(device.get('assetnum'))}",
                 f"- 车站：{_fmt(device.get('station_name'))}　线路：{_fmt(device.get('line'))}",
-                f"- 30 天风险：{_fmt(device.get('risk_30d'))}　90 天风险：{_fmt(device.get('risk_90d'))}",
+                f"- 30 天内再次出现故障工单的风险：{_risk_label(device.get('risk_30d'))}　90 天：{_risk_label(device.get('risk_90d'))}",
                 f"- 预警等级：{_fmt(device.get('warning_level'))}",
                 f"- 建议巡检窗口：{_fmt(device.get('suggested_inspection_window'))}",
             ]
@@ -178,29 +219,32 @@ def narrate_maintenance_suggestions(result: dict[str, Any]) -> str:
     suggestions = result.get("suggestions") or []
     focus = result.get("fault_focus") or "暂停服务"
     lines = [
-        "【今日检修建议】",
+        "【检修建议】",
         "",
         f"故障焦点：{focus}",
-        f"排序方法：{_fmt(result.get('ranking_method'), 'deterministic_weighted_rules')}",
-        f"共 {len(suggestions)} 条（服务端已排序，以下按原序列出）：",
+        f"共 {len(suggestions)} 条，按服务端提供的顺序列出：",
     ]
     for i, row in enumerate(suggestions, 1):
         reasons = row.get("reasons") or []
-        reason_preview = "；".join(str(r) for r in reasons[:3]) if reasons else "无"
+        reason_preview = "；".join(_human_suggestion_reason(str(r)) for r in reasons[:3]) if reasons else "暂无可展示的依据"
         lines.extend(
             [
                 "",
                 f"{i}. 设备 {_fmt(row.get('assetnum'))}　车站 {_fmt(row.get('station_name'))}",
-                f"- 得分：{_fmt(row.get('score'))}　建议班组：{_fmt(row.get('suggested_crew_id'), '未指定')}",
-                f"- 理由：{reason_preview}",
+                f"- 建议依据：{reason_preview}",
             ]
         )
-    if result.get("model_note"):
-        lines.extend(["", str(result["model_note"])])
+    source_note = str(result.get("model_note") or "")
+    if "prediction_results.csv" in source_note:
+        lines.extend(["", "风险参考来自外部预测结果；接口未提供该数据的更新时间。"])
+    elif "统计基线" in source_note:
+        lines.extend(["", "风险参考根据历史工单频次和复发间隔估算；接口未提供该数据的更新时间。"])
+    elif source_note:
+        lines.extend(["", "接口未说明风险数据的具体来源和更新时间。"])
+    if any("模拟" in str(row.get("data_note") or "") for row in suggestions):
+        lines.extend(["", "人员、备件和站点参考信息为体验数据，安排前请核实现场情况。"])
     lines.extend(
         [
-            "",
-            "创建 / 调整任务与执行反馈请使用控制台或 HTTP /usecases/maintenance/*。",
             "",
             SCIENTIFIC_BOUNDARY,
         ]
@@ -213,7 +257,7 @@ def narrate_maintenance_tasks(result: dict[str, Any]) -> str:
     lines = [
         "【检修任务列表】",
         "",
-        f"共 {result.get('count', len(tasks))} 条（独立于工单 pending_actions）：",
+        f"共 {result.get('count', len(tasks))} 条：",
     ]
     if not tasks:
         lines.append("- 暂无检修任务")
@@ -223,7 +267,7 @@ def narrate_maintenance_tasks(result: dict[str, Any]) -> str:
                 [
                     "",
                     f"{i}. {_fmt(task.get('id'))}　设备 {_fmt(task.get('assetnum'))}",
-                    f"- 状态：{_fmt(task.get('status'))}　优先级：{_fmt(task.get('priority'))}",
+                    f"- 状态：{_task_status_label(task.get('status'))}　优先级：{_fmt(task.get('priority'))}",
                     f"- 计划日：{_fmt(task.get('planned_date'), '未定')}　班组：{_fmt(task.get('assignee_crew_id'), '未指定')}",
                 ]
             )
@@ -264,12 +308,12 @@ def narrate_risk(result: dict[str, Any]) -> str:
         f"品牌：{_fmt(result.get('brand'))}",
         "",
         "复发风险：",
-        f"- 7 天：{_fmt(result.get('risk_7d'))}",
-        f"- 14 天：{_fmt(result.get('risk_14d'))}",
-        f"- 21 天：{_fmt(result.get('risk_21d'))}",
-        f"- 30 天：{_fmt(result.get('risk_30d'))}",
-        f"- 60 天：{_fmt(result.get('risk_60d'))}",
-        f"- 90 天：{_fmt(result.get('risk_90d'))}",
+        f"- 7 天：{_risk_label(result.get('risk_7d'))}",
+        f"- 14 天：{_risk_label(result.get('risk_14d'))}",
+        f"- 21 天：{_risk_label(result.get('risk_21d'))}",
+        f"- 30 天：{_risk_label(result.get('risk_30d'))}",
+        f"- 60 天：{_risk_label(result.get('risk_60d'))}",
+        f"- 90 天：{_risk_label(result.get('risk_90d'))}",
         "",
         f"预警等级：{_fmt(result.get('warning_level'))}",
         f"建议巡检窗口：{_fmt(result.get('suggested_inspection_window'))}",
@@ -371,8 +415,8 @@ def narrate_diagnose(result: dict[str, Any]) -> str:
         f"- 历史工单数：{_fmt(profile.get('history_workorder_count'))}",
         "",
         "二、复发风险",
-        f"- 30 天：{_fmt(risk.get('risk_30d'))}",
-        f"- 90 天：{_fmt(risk.get('risk_90d'))}",
+        f"- 30 天：{_risk_label(risk.get('risk_30d'))}",
+        f"- 90 天：{_risk_label(risk.get('risk_90d'))}",
         f"- 预警等级：{_fmt(risk.get('warning_level'))}",
         f"- 建议巡检窗口：{_fmt(risk.get('suggested_inspection_window'))}",
         "",
@@ -416,10 +460,7 @@ def _template_narrate(use_case: str, result: dict[str, Any]) -> str:
     """模板叙述（兜底 & LLM 关闭时使用）。"""
     narrator = _NARRATORS.get(use_case)
     if narrator is None:
-        compact = json.dumps(result, ensure_ascii=False, default=str)
-        if len(compact) > 2000:
-            compact = compact[:2000] + "..."
-        return f"已完成用例 {use_case}。\n\n结果摘要：{compact}\n\n{SCIENTIFIC_BOUNDARY}"
+        return f"已完成相关查询，但暂时无法整理结果摘要。请查看对应页面中的结构化数据。\n\n{SCIENTIFIC_BOUNDARY}"
     return narrator(result)
 
 
@@ -429,10 +470,12 @@ _NARRATE_SYSTEM_PROMPT = (
     "请用简洁、专业、面向一线检修人员的中文，把结果讲清楚。硬性要求：\n"
     "1. 只能使用提供的数据，严禁编造设备编号、风险数值、故障类别、手册条目或任何未提供的事实；\n"
     "2. 风险表示未来时间窗口内再次产生故障工单的可能性，不等于精确故障发生日期；\n"
-    "3. 若结果含今日检修建议列表，必须按给定顺序叙述，禁止重排；单设备巡检建议不是最终根因；"
+    "3. 若结果含检修建议列表，必须按给定顺序叙述，禁止重排；单设备巡检建议不是最终根因；"
     "故障类型的条件概率不得说成一定发生；\n"
-    "4. 若某项数据缺失，如实说明，不要臆测；若风险来自统计基线而非真实模型，需说明这是基线参考；\n"
-    "5. 输出纯文本，不要输出 JSON 或代码块，结尾附一句简短的科学边界提示。"
+    "4. 若某项数据缺失，如实说明，不要臆测；风险参考若来自统计估算，应明确说是估算参考。没有更新时间时不得说‘今日’、‘最新’或‘实时’；\n"
+    "5. 使用一线检修人员熟悉的中文。不要复述内部用例名、Tool 名、字段名、文件名、接口地址或实现方法，也不要提‘确定性规则’、‘LLM’或‘RAG’。"
+    "数据来源必要时用用户语言概括；体验/模拟资源必须明说是体验数据，并提醒现场核实。风险小数按百分数表述。\n"
+    "6. 输出纯文本，不要输出 JSON 或代码块，结尾附一句简短的科学边界提示。"
 )
 
 

@@ -1,4 +1,5 @@
 crew_id,crew_name,available,skill_tags,note
-CREW-A,甲班检修组,true,AFCAGM;暂停服务,模拟数据-非真实排班
-CREW-B,乙班检修组,true,AFCAGM;卡票,模拟数据-非真实排班
-CREW-C,丙班检修组,false,AFCAGM,模拟数据-今日不可用
+DEMO-CREW-01,虚构检修1组,true,AFCAGM;暂停服务;卡票,合成排班，非真实人员
+DEMO-CREW-02,虚构检修2组,true,AFCAGM;暂停服务;卡票,合成排班，非真实人员
+DEMO-CREW-03,虚构检修3组,true,AFCAGM;暂停服务;卡票,合成排班，非真实人员
+DEMO-CREW-04,虚构检修4组,false,AFCAGM;暂停服务;卡票,合成排班，非真实人员

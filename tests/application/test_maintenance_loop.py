@@ -22,23 +22,33 @@ def test_suggestion_to_task_to_feedback():
     created = usecases.accept_suggestion_as_task(top, priority=1)
     assert created["status"] == "success"
     task_id = created["task"]["id"]
+    try:
+        adjusted = usecases.adjust_maintenance_task(
+            task_id,
+            {"priority": 2, "status": "in_progress"},
+        )
+        assert adjusted["task"]["priority"] == 2
+        assert adjusted["task"]["status"] == "in_progress"
 
-    adjusted = usecases.adjust_maintenance_task(
-        task_id,
-        {"priority": 2, "status": "in_progress"},
-    )
-    assert adjusted["task"]["priority"] == 2
-    assert adjusted["task"]["status"] == "in_progress"
+        feedback = usecases.submit_maintenance_feedback(
+            task_id,
+            result="已现场检查，确认为暂停服务相关",
+            matched_fault=True,
+            followed_suggestion=True,
+            note="DEMO 闭环验收",
+        )
+        assert feedback["task"]["status"] == "done"
+        assert feedback["task"]["feedback_result"]
 
-    feedback = usecases.submit_maintenance_feedback(
-        task_id,
-        result="已现场检查，确认为暂停服务相关",
-        matched_fault=True,
-        followed_suggestion=True,
-        note="DEMO 闭环验收",
-    )
-    assert feedback["task"]["status"] == "done"
-    assert feedback["task"]["feedback_result"]
+        listed = usecases.list_maintenance_tasks(status="done")
+        assert any(t["id"] == task_id for t in listed["tasks"])
+    finally:
+        # Integration tests must leave the isolated demo task page unchanged.
+        from backend.core.config import is_sql_backend
 
-    listed = usecases.list_maintenance_tasks(status="done")
-    assert any(t["id"] == task_id for t in listed["tasks"])
+        if is_sql_backend():
+            from backend.infrastructure.db import get_pool
+
+            with get_pool().connection() as conn:
+                conn.execute("DELETE FROM business.maintenance_tasks WHERE id = %s", (task_id,))
+                conn.commit()
